@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<VisualStudioProject
+	ProjectType="Intel C++ Project"
+	Version="14.0"
+	Name="CEB_2eq_lite_IVfit"
+	ProjectGUID="{500C3862-0665-4CBC-B048-03A68C4CC00E}"
+	VCNestedProjectGUID="{F3F23174-F5ED-4F46-88A0-7A6D63102696}"
+	VCNestedProjectFileName="CEB_2eq_lite_IVfit.vcproj"
+	>
+	<Configurations>
+		<Configuration
+			Name="Debug|Win32"
+			>
+			<Tool
+				Name="CppCmplrTool"
+				OpenMP="1000"
+			/>
+		</Configuration>
+		<Configuration
+			Name="Debug|x64"
+			>
+			<Tool
+				Name="CppCmplrTool"
+				OpenMP="1000"
+			/>
+		</Configuration>
+		<Configuration
+			Name="Release|x64"
+			>
+			<Tool
+				Name="CppCmplrTool"
+				Optimization="1000"
+				Parallelization="false"
+			/>
+		</Configuration>
+	</Configurations>
+	<Files/>
+</VisualStudioProject>
