@@ -45,7 +45,7 @@ public:
 
 	double VolS; //volume of superconductor
 
-    double Z; // heat exchange in normal metal in nW/(K^5*micron^3)
+	double Z; // heat exchange in normal metal in nW/(K^5*micron^3)
 
 	double ZS; //sigma and volume of supercond-r
 
@@ -53,7 +53,7 @@ public:
 
 	double Rn; //normal resistance of 1 SIN, Ohm 
 
-    double Ra; //resistance of absorber, Ohm
+	double Ra; //resistance of absorber, Ohm
 	
 	int M; //number of bolometers in series,
 
