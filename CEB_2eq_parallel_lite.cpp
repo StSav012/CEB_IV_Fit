@@ -8,8 +8,8 @@
 #include "header.h"
 
 #define PI 3.14159265358979
-#define ME  9.10938188e-31 //kg
-#define EL  1.60217646e-19 //coulombs
+#define ME 9.10938188e-31 //kg
+#define EL 1.60217646e-19 //coulombs
 #define HPLANCK 6.626068e-34 //m2 kg / s
 #define HBAR 1.05457148e-34 //m2 kg / s
 #define KBOL 8.6173324e-5 //eV K-1
@@ -22,6 +22,8 @@
 double current(float v, float tau)
 {//a procedure which computes the current using approximation
 	//i is measured in [delta(0)/eRn]
+	/*'v' is voltage, 'tau' is for*/
+	
 	double i;
 	double a0, a1, a2, a3;
 	float s;
@@ -53,8 +55,8 @@ double currentInt(float DT, float v, float tau, float tauE)
    x=DT+dx;
    v1=abs(v);
 
-   double prev_i = 0;     // Предыдущее значение i
-   double accuracy = 1e-6;  // Заданная точность
+   double prev_i = 0;     // ГЏГ°ГҐГ¤Г»Г¤ГіГ№ГҐГҐ Г§Г­Г Г·ГҐГ­ГЁГҐ i
+   double accuracy = 1e-6;  // Г‡Г Г¤Г Г­Г­Г Гї ГІГ®Г·Г­Г®Г±ГІГј
 
 //#pragma omp parallel for default(shared) private(x, a0, a1, a2) reduction(+:i) num_threads(THREADS)
    for (l=0; l<=inf; l++)
@@ -65,10 +67,10 @@ double currentInt(float DT, float v, float tau, float tauE)
 	   i += abs(x)/a2*(a0-a1);
 	   x += dx;
 
-	   /* Проверка точности
+	   /* ГЏГ°Г®ГўГҐГ°ГЄГ  ГІГ®Г·Г­Г®Г±ГІГЁ
        if (fabs(x - DT) < dx)
            break;*/
-	   // Проверка точности на каждой итерации
+	   // ГЏГ°Г®ГўГҐГ°ГЄГ  ГІГ®Г·Г­Г®Г±ГІГЁ Г­Г  ГЄГ Г¦Г¤Г®Г© ГЁГІГҐГ°Г Г¶ГЁГЁ
 	   if (fabs(i - prev_i) < accuracy)
 		   break;
 	   prev_i = i;
@@ -84,10 +86,10 @@ double currentInt(float DT, float v, float tau, float tauE)
 	   i += abs(x)/a2*(a0-a1);
 	   x -= dx;
 	   
-       /* Проверка точности
+       /* ГЏГ°Г®ГўГҐГ°ГЄГ  ГІГ®Г·Г­Г®Г±ГІГЁ
        if (fabs(x + DT) < dx)
            break;*/
-	   // Проверка точности на каждой итерации
+	   // ГЏГ°Г®ГўГҐГ°ГЄГ  ГІГ®Г·Г­Г®Г±ГІГЁ Г­Г  ГЄГ Г¦Г¤Г®Г© ГЁГІГҐГ°Г Г¶ГЁГЁ
 	   if (fabs(i - prev_i) < accuracy)
 		   break;
 	   prev_i = i;
@@ -274,7 +276,7 @@ double PowerCool(float v, float tau, float tauE)
 }*/
 
 double AndCurrent(float DT, float v, float tauE, float Wt, float tm)
-{//computes the current using exact integral 
+{//computes the Andreev current using exact integral 
 	//Wt - omega with ~ from Vasenko 2010
 	//dd - 1/tm, energy of pair breaking
    
@@ -398,6 +400,7 @@ long CFoo::CEB_2eq_parallel_lite(void)
   double Te, dT, Ts; //electron and phonon temperature
 
   double tau, Vg, tauE, tauC, T1, T2; //dimentionless variables
+	
   double tauold;
 
   double Pe_p, Pabs, Pleak, Pheat, Pcool, P, Pcool1, Ps, Ps1, Pand;
@@ -411,16 +414,21 @@ long CFoo::CEB_2eq_parallel_lite(void)
   double Rn1, Rleak1, V1, V2, Vcur; //for thermometer junctions
 
   double G, dPdT, dIdT, dIdV, dPdV, Sv, dPT, mm; //for noise 
+	
   double dP, dI, dPdI;
+	
   double NEP, NEPs, NEPep, NEPa, NEPph;
-  double vn, in; //amplifyer noise
+	
+  double vn, in; //amplifier noise
 
   double Tp0, x, DeltaT;
+	
   double eps; //coefficient between Ps and Ts
 
   double NoiA; //amplifier noise
 
   float G_NIS, G_e; 
+	
   float Wt;
 
   float tm;
@@ -481,10 +489,9 @@ long CFoo::CEB_2eq_parallel_lite(void)
 
 	Te = Tp; //is to be found
 
-	Ts = Tp; //electrone T in SC 
+	Ts = Tp; //electron T in SC 
+	
 	//Ib = 1.4; //nA, for electron cooling
-
-
 
 	dPbg = Pbg/M/MP; //pW, per 1 bolometer; 200mk_exp.txt
 
@@ -550,7 +557,7 @@ long CFoo::CEB_2eq_parallel_lite(void)
 	 //---------- calculation parameters
 
 
-	  //voltage step, V
+	 //voltage step, V
 	 Vfin=dVFinVg*Vg; //0.8
 	 Vstr=dVStartVg*Vg;
 	 NV=(Vfin/*-0.0*Vg*/)/dV;
@@ -611,10 +618,11 @@ long CFoo::CEB_2eq_parallel_lite(void)
 					Ps=Ps* Vg*Vg/Rn * 1e12; //returning power from S to N
 					Pheat = Pe_p + 1.0*Pabs + 1.0*Pand + dPbg + 2.0*beta*Ps + 1.0*Pleak; // + Pand;
 					P=Pheat - 2.0*Pcool;
-					if (P<0) {T2=tauE;}	else {T1=tauE;}
+					if (P<0) {T2=tauE;}	
+					else {T1=tauE;}
 					/*tauE=(T1+T2)/2;
-				    Te = tauE*Delta;
-				    Ts = tau*Delta;
+				    	Te = tauE*Delta;
+				   	Ts = tau*Delta;
 					DeltaT = sqrt(1-pow(Ts/Tc,float(3.2)));*/
 					//DeltaT=1; 
 				}
@@ -657,20 +665,20 @@ long CFoo::CEB_2eq_parallel_lite(void)
 //		in=(0.8e-15)*1/sqrt(2.0); //A/sqrt(Hz)//for 2 amp *1/sqrt(2)
 
 		dPT = PowerCoolInt(DeltaT, V[j]/Vg, tau, tauE + dT/Delta, &Ps) - PowerCoolInt(DeltaT, V[j]/Vg, tau, tauE - dT/Delta, &Ps);
-        dPdT = Vg*Vg/Rn*1e12*(dPT)/(2*dT); //pW/K
-	    dIdT = I0*(currentInt(DeltaT,V[j]/Vg,tau,tauE + dT/Delta) - currentInt(DeltaT,V[j]/Vg,tau,tauE-dT/Delta))/(2*dT); //nA/K
-	    dIdV = (I0*(currentInt(DeltaT,V[j+1]/Vg,tau,tauE)+ ii * AndCurrent(DeltaT, V[j+1]/Vg, tauE, Wt, tm) - currentInt(DeltaT,V[j-1]/Vg,tau,tauE)-ii*AndCurrent(DeltaT, V[j-1]/Vg, tauE, Wt, tm)) )/(2*dV); //nA/V
-	    dPdV = Vg*Vg/Rn*1e12*(PowerCoolInt(DeltaT,V[j+1]/Vg, tau, tauE, &Ps) - PowerCoolInt(DeltaT,V[j-1]/Vg, tau, tauE, &Ps))/(2*dV); //pW/V
+        	dPdT = Vg*Vg/Rn*1e12*(dPT)/(2*dT); //pW/K
+	    	dIdT = I0*(currentInt(DeltaT,V[j]/Vg,tau,tauE + dT/Delta) - currentInt(DeltaT,V[j]/Vg,tau,tauE-dT/Delta))/(2*dT); //nA/K
+	    	dIdV = (I0*(currentInt(DeltaT,V[j+1]/Vg,tau,tauE)+ ii * AndCurrent(DeltaT, V[j+1]/Vg, tauE, Wt, tm) - currentInt(DeltaT,V[j-1]/Vg,tau,tauE)-ii*AndCurrent(DeltaT, V[j-1]/Vg, tauE, Wt, tm)) )/(2*dV); //nA/V
+	    	dPdV = Vg*Vg/Rn*1e12*(PowerCoolInt(DeltaT,V[j+1]/Vg, tau, tauE, &Ps) - PowerCoolInt(DeltaT,V[j-1]/Vg, tau, tauE, &Ps))/(2*dV); //pW/V
 
-        G_NIS = dPdT; G_e = 5*Z*Vol*pow(Te,4)* 1e3; //pW/K
+        	G_NIS = dPdT; G_e = 5*Z*Vol*pow(Te,4)* 1e3; //pW/K
 
 		G = G_e + 2*(G_NIS - dIdT/dIdV*dPdV);  //pW/K (2)SINs		
 	   
-	    Sv = - 2* dIdT/dIdV/G; //V/pW  for 1 bolo
+	    	Sv = - 2* dIdT/dIdV/G; //V/pW  for 1 bolo
 
 		Sv = Sv/MP;
 		
-	    NEPep = 10*EL*KBOL*Z*Vol*(pow(Tp,TephPOW)+ pow(Te,TephPOW))*1e3*1e12;  //^2 pW^2/Hz
+	    	NEPep = 10*EL*KBOL*Z*Vol*(pow(Tp,TephPOW)+ pow(Te,TephPOW))*1e3*1e12;  //^2 pW^2/Hz
 
 		NoiA = (vn*vn + pow(float(in*(2*1e9/dIdV + Ra)*M/MP),float(2))); //(V/sqrt(Hz))^2
 		
@@ -679,26 +687,26 @@ long CFoo::CEB_2eq_parallel_lite(void)
 		//----- NEP SIN approximation ----------------------------
 
 		dI = 2*EL*abs(I[j])/pow(dIdV*Sv,2)*1e9; //pW^2/Hz
-	    dPdI = 2*2*EL*Pcool/(dIdV*Sv)*1e9; //pW^2/Hz, second '2' is from comparizon with integral
+	    	dPdI = 2*2*EL*Pcool/(dIdV*Sv)*1e9; //pW^2/Hz, second '2' is from comparizon with integral
 		mm=log(sqrt(2*PI*KBOL*Te*Vg)/(2*abs(I[j])*Rn*1e-9));
-	    dP = (0.5 + mm*mm)*(KBOL*Te)*(KBOL*Te)*abs(I[j])*EL*1e-9*1e24; //pW^2/Hz
-	    NEPs = 2*(dI - 2*dPdI + dP); ////pW^2/Hz  (2) //all terms positive
+	    	dP = (0.5 + mm*mm)*(KBOL*Te)*(KBOL*Te)*abs(I[j])*EL*1e-9*1e24; //pW^2/Hz
+	    	NEPs = 2*(dI - 2*dPdI + dP); ////pW^2/Hz  (2) //all terms positive
 		//fprintf(f5,"%g %g %g %g\n",  M*(2*V[j]+I[j]*Ra*1e-9), dI, 2*dPdI, dP); 
 
-       //----- NEP SIN integral ----------------------------
+       	//----- NEP SIN integral ----------------------------
 
-       /* mm = NEPInt(DeltaT,V[j]/Vg,tau,tauE, &dI, &dP, &dPdI);
+       		/* mm = NEPInt(DeltaT,V[j]/Vg,tau,tauE, &dI, &dP, &dPdI);
 		dI = EL*I0*dI/pow(dIdV*Sv,2)*1e9; //pW^2/Hz
-	    dPdI = dPdI/(dIdV*Sv)*EL*Vg*Vg/Rn*1e12*1e9; //pW^2/Hz
-	    dP = dP*Vg*Vg*Vg/Rn*EL*1e24; //pW^2/Hz 
+	    	dPdI = dPdI/(dIdV*Sv)*EL*Vg*Vg/Rn*1e12*1e9; //pW^2/Hz
+	    	dP = dP*Vg*Vg*Vg/Rn*EL*1e24; //pW^2/Hz 
         
-	    NEPs = 2*(dI - 2*dPdI + dP); ////pW^2/Hz  (2)  
+	    	NEPs = 2*(dI - 2*dPdI + dP); ////pW^2/Hz  (2)  
 		fprintf(f9,"%g %g %g %g\n",  M*(2*V[j]+I[j]*Ra*1e-9), dI, 2*dPdI, dP); */
  
 		//-----------------------------------------------
 		//-----------------------------------------------
 		
-        NEPph = sqrt(M*MP*2*Pbg* 0 *1e9*HPLANCK*1e-12 + pow(M*MP*Pbg*1e-12,2)/ 1e3 /1e9); //W/sqrt(Hz) at 0 GHz
+        	NEPph = sqrt(M*MP*2*Pbg* 0 *1e9*HPLANCK*1e-12 + pow(M*MP*Pbg*1e-12,2)/ 1e3 /1e9); //W/sqrt(Hz) at 0 GHz
 		//NEPph = sqrt(M*MP*2*Pbg* 350 *1e9*HPLANCK*1e-12 + pow(M*MP*Pbg*1e-12,2)/ 1.552 /1e9); //W/sqrt(Hz) at 350 GHz
 		NEPph = NEPph*1e12; //pW
 
@@ -707,25 +715,25 @@ long CFoo::CEB_2eq_parallel_lite(void)
 		
 		fprintf(f2,"%g\t%g\t%g\t%g\t%g\t%g\t%g\n", M*(2*V[j]+I[j]*Ra*1e-9), sqrt(M * MP *NEPep)*1e9*abs(Sv), sqrt(M * MP *NEPs)*1e9*abs(Sv), sqrt(NoiA)*1e9, NEP*1e9*abs(Sv), NEPph*1e9*abs(Sv), 1e9*abs(Sv)*sqrt(NEP*NEP - NEPph*NEPph)); 
 
-        fprintf(f4,"%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\n", M*(2*V[j]+I[j]*Ra*1e-9), MP*1e-9*(I[j]), sqrt(M * MP *NEPep)*1e-12, sqrt(M * MP *NEPs)*1e-12, sqrt(NEPa)*1e-12, NEP*1e-12, NEPph*1e-12, abs(Sv)*1e12, 1e-12*sqrt(NEP*NEP - NEPph*NEPph)); 
+        	fprintf(f4,"%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\n", M*(2*V[j]+I[j]*Ra*1e-9), MP*1e-9*(I[j]), sqrt(M * MP *NEPep)*1e-12, sqrt(M * MP *NEPs)*1e-12, sqrt(NEPa)*1e-12, NEP*1e-12, NEPph*1e-12, abs(Sv)*1e12, 1e-12*sqrt(NEP*NEP - NEPph*NEPph)); 
 		
 		fprintf(f5,"%g\t%g\t%g\n", M*(2*V[j]+I[j]*Ra*1e-9), G_e, G_NIS); 
 		
 		printf("Sv: %g Te: %g NEPs: %g NEPt: %g\n\n", abs(Sv)*1e12, Te, sqrt(M * MP *NEPs)*1e-12, NEP*1e-12);
 
 		//system("cls"); 
-	 }
+	}
     
-	 fclose(f2);
-	 fclose(f3);
-	 fclose(f4);
-	 fclose(f5);
+	fclose(f2);
+	fclose(f3);
+	fclose(f4);
+	fclose(f5);
 
 
 
-	 finish=clock();
-     double sTime=(double)(finish-start)/CLOCKS_PER_SEC;
-     printf("\nTime spent: %f sec.", sTime);
+	finish=clock();
+     	double sTime=(double)(finish-start)/CLOCKS_PER_SEC;
+     	printf("\nTime spent: %f sec.", sTime);
  
 	return NV-1;
 
