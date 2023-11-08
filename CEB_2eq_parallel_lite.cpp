@@ -17,8 +17,6 @@
 
 //1 electron volt = 1.60217646 * 10-19 joule
 
-
-
 double current(float v, float tau)
 {//a procedure which computes the current using approximation
 	//i is measured in [delta(0)/eRn]
@@ -36,242 +34,250 @@ double current(float v, float tau)
 	if (v>0) s=1;
 	else s=-1;
 
-    i = s*sqrt(2*PI*a1/a2 + a3)*(1/(2*exp((1-v)/tau)+1) + 1/(2*exp((1+v)/tau)+1));
+    	i = s*sqrt(2*PI*a1/a2 + a3)*(1/(2*exp((1-v)/tau)+1) + 1/(2*exp((1+v)/tau)+1));
 	return i;
 }
 
 double currentInt(float DT, float v, float tau, float tauE)
 {//computes the current using exact integral 
    
-   double i, v1;
-   double a0, a1, a2; 
-   double x; //energy
-   float dx;
-   int l, inf;
-   float s;
-   dx=0.2e-3;
-   inf=(int)(20/dx);
-   i=0;
-   x=DT+dx;
-   v1=abs(v);
+	double i, v1;
+	double a0, a1, a2; 
+	double x; //energy
+	float dx;
+	int l, inf;
+	float s;
+	dx=0.2e-3;
+	inf=(int)(20/dx);
+	i=0;
+	x=DT+dx;
+	v1=abs(v);
 
-   double prev_i = 0;     // Ïðåäûäóùåå çíà÷åíèå i
-   double accuracy = 1e-6;  // Çàäàííàÿ òî÷íîñòü
-
-//#pragma omp parallel for default(shared) private(x, a0, a1, a2) reduction(+:i) num_threads(THREADS)
-   for (l=0; l<=inf; l++)
-   {  
-	   a0 = 1/(exp((x-v1)/tauE) + 1);
-	   a1 = 1/(exp(x/tau) + 1); 
-       a2 = sqrt(x*x-DT*DT);
-	   i += abs(x)/a2*(a0-a1);
-	   x += dx;
-
-	   /* Ïðîâåðêà òî÷íîñòè
-       if (fabs(x - DT) < dx)
-           break;*/
-	   // Ïðîâåðêà òî÷íîñòè íà êàæäîé èòåðàöèè
-	   if (fabs(i - prev_i) < accuracy)
-		   break;
-	   prev_i = i;
-   }
-   x=-DT-dx;
+	double prev_i = 0;     // Previous 'i' value
+	double accuracy = 1e-6;  // Calculation accuracy
 
 //#pragma omp parallel for default(shared) private(x, a0, a1, a2) reduction(+:i) num_threads(THREADS)
-   for (l=0; l<=inf; l++)
-   {  
-	   a0 = 1/(exp((x-v1)/tauE) + 1);
-	   a1 = 1/(exp(x/tau) + 1);
-       a2 = sqrt(x*x-DT*DT);
-	   i += abs(x)/a2*(a0-a1);
-	   x -= dx;
+	for (l=0; l<=inf; l++)
+	{  
+		a0 = 1/(exp((x-v1)/tauE) + 1);
+		a1 = 1/(exp(x/tau) + 1); 
+	 	a2 = sqrt(x*x-DT*DT);
+		i += abs(x)/a2*(a0-a1);
+		x += dx;
+
+		/* Accuracy check
+ 		if (fabs(x - DT) < dx)
+  		      	break;*/
+		// Accuracy check on every iteration
+		if (fabs(i - prev_i) < accuracy)
+			break;
+		prev_i = i;
+	}
+	x=-DT-dx;
+
+//#pragma omp parallel for default(shared) private(x, a0, a1, a2) reduction(+:i) num_threads(THREADS)
+   	for (l=0; l<=inf; l++)
+   	{  
+		a0 = 1/(exp((x-v1)/tauE) + 1);
+		a1 = 1/(exp(x/tau) + 1);
+		a2 = sqrt(x*x-DT*DT);
+		i += abs(x)/a2*(a0-a1);
+		x -= dx;
 	   
-       /* Ïðîâåðêà òî÷íîñòè
-       if (fabs(x + DT) < dx)
-           break;*/
-	   // Ïðîâåðêà òî÷íîñòè íà êàæäîé èòåðàöèè
-	   if (fabs(i - prev_i) < accuracy)
-		   break;
-	   prev_i = i;
-   }
-   if (v>0) s=1;
+       		/* Accuracy check
+       		if (fabs(x + DT) < dx)
+	 		break;*/
+		// Accuracy check on every iteration
+		if (fabs(i - prev_i) < accuracy)
+			break;
+		prev_i = i;
+	}
+	if (v>0) s=1;
 	else s=-1;
-   i=i*dx*s;
-   return i;
+	i=i*dx*s;
+	return i;
 }
 
 /*double currentIntCom(float DT, float v, float tau, float tauE, float gamma)
 {//integral of the current through SIN junction with gap smearing
 	//E = x, V=v, T=tau, [x]=[v]=[tau]
 	//DT = delta(tau)/delta(0)
-   double p, q;
-   double a, a1, a2;
-   double b, b1;
-   double x, dx;
-   int l, inf;
-   double i; //current
-   FILE *f8; //density of states
-   double tmp1;
-   i=0;
-   //v=abs(v);
-   dx=0.2e-3;
-   //dx<1e-3 for gamma=1e-4
-   //dx<0.2e-3 for gamma=1e-5
-   inf=(int)(20/dx);
-   //f8=fopen("DOS.txt","w");
-  
-   x=dx;
+ 	double p, q;
+	double a, a1, a2;
+	double b, b1;
+	double x, dx;
+	int l, inf;
+	double i; //current
+	FILE *f8; //density of states
+	double tmp1;
+	i=0;
+	//v=abs(v);
+	dx=0.2e-3;
+	//dx<1e-3 for gamma=1e-4
+	//dx<0.2e-3 for gamma=1e-5
+	inf=(int)(20/dx);
+	//f8=fopen("DOS.txt","w");
+	x=dx;
 #pragma omp parallel for default(shared) private(x, a, b, tmp1, p, q, b1, a2) reduction(+:i) num_threads(THREADS)
-	   for (l=0; l<=inf; l++)
-	   {  
-		   x=dx*(l+1);
-		   a=x*x-gamma*gamma-DT;
-		   b=-2*x*gamma;
-		   tmp1=sqrt(a*a+b*b);
-		   p=sqrt((a+tmp1)/2);
-		   q=sqrt((tmp1-a)/2);
-		   b1=(x*p+gamma*q)/(p*p + q*q)*1e6; //fprintf(f8,"%f %f\n",x,b1);
-		   a2=1e6/(exp((x-v)/tauE)+ 1);
-		   a1=1e6/(exp(x/tau)+ 1);
-		   i+=b1*(a2-a1); //fprintf(f8,"%f %f\n",x,b1*(a2-a1));
-	   }
-   //fprintf(f8,"\n");
-   x=-dx;
-   double i2 = i;
-   i = 0;
+	for (l=0; l<=inf; l++)
+	{  
+		x=dx*(l+1);
+		a=x*x-gamma*gamma-DT;
+		b=-2*x*gamma;
+		tmp1=sqrt(a*a+b*b);
+		p=sqrt((a+tmp1)/2);
+		q=sqrt((tmp1-a)/2);
+		b1=(x*p+gamma*q)/(p*p + q*q)*1e6; //fprintf(f8,"%f %f\n",x,b1);
+		a2=1e6/(exp((x-v)/tauE)+ 1);
+		a1=1e6/(exp(x/tau)+ 1);
+		i+=b1*(a2-a1); //fprintf(f8,"%f %f\n",x,b1*(a2-a1));
+	}
+	//fprintf(f8,"\n");
+	x=-dx;
+	double i2 = i;
+	i = 0;
 #pragma omp parallel for default(shared) private(x, a, b, tmp1, p, q, b1, a2) reduction(+:i) num_threads(THREADS)
-	   for (l=0; l<=inf; l++)
-	   {  
-		   x=-dx*(l+1);
-		   a=x*x-gamma*gamma-DT;
-		   b=-2*x*gamma;
-		   tmp1=sqrt(a*a+b*b);
-		   p=sqrt((a+tmp1)/2); q=-sqrt((tmp1-a)/2);
-		   b1=-(x*p+gamma*q)/(p*p + q*q)*1e6; //fprintf(f8,"%f %f\n",x,b1);
-		   a2=1e6/(exp((x-v)/tauE)+ 1); a1=1e6/(exp(x/tau)+ 1);
-		   i+=b1*(a2-a1); //fprintf(f8,"%f %f\n",x,b1*(a2-a1));
-	   }
-   //fprintf(f8,"%f\n",i*1e10);
-   //fclose(f8);
-   //if (v>0) i=i*dx;
-   //else i=i*dx*(-1);
-   i=(i+i2)*dx;  //do not forget to add *1e-12!!!
-   return i;
+	for (l=0; l<=inf; l++)
+	{  
+		x=-dx*(l+1);
+		a=x*x-gamma*gamma-DT;
+		b=-2*x*gamma;
+		tmp1=sqrt(a*a+b*b);
+		p=sqrt((a+tmp1)/2); q=-sqrt((tmp1-a)/2);
+		b1=-(x*p+gamma*q)/(p*p + q*q)*1e6; //fprintf(f8,"%f %f\n",x,b1);
+		a2=1e6/(exp((x-v)/tauE)+ 1); a1=1e6/(exp(x/tau)+ 1);
+		i+=b1*(a2-a1); //fprintf(f8,"%f %f\n",x,b1*(a2-a1));
+	}
+	//fprintf(f8,"%f\n",i*1e10);
+	//fclose(f8);
+	//if (v>0) i=i*dx;
+	//else i=i*dx*(-1);
+	i=(i+i2)*dx;  //do not forget to add *1e-12!!!
+	return i;
 
 }*/
 
 double PowerCool(float v, float tau, float tauE)
 {//a procedure which computes the cooling power of SIN junction 
    
-   double p;
-   double a0, a1, a2, a3;
-   double b0, b1, b2, b3;
-   double c0, c1;
+	double p;
+	double a0, a1, a2, a3;
+	double b0, b1, b2, b3;
+	double c0, c1;
 
-   a3=0; b3=0;
-   v=abs(v);
+	a3=0; 
+	b3=0;
+	v=abs(v);
 
-   a0 = (1-v)/tauE;
-   a1 = sqrt(2*PI*tauE)*((1-v)/(2*exp(a0)+1.28)+0.5*tauE/(2*exp(a0)+0.64))/(exp(-2.5*(a0+2))+1);
-   if ((v-1-tauE)>0) 
-   {
-      a2=sqrt(v*v-1);
-	  a3=0.5*(-v*a2 + log(v+a2) + PI*PI*tauE*tauE/3*v/a2)/(exp(2.5*(a0+2))+1);
-   }
+	a0 = (1-v)/tauE;
+	a1 = sqrt(2*PI*tauE)*((1-v)/(2*exp(a0)+1.28)+0.5*tauE/(2*exp(a0)+0.64))/(exp(-2.5*(a0+2))+1);
+	if ((v-1-tauE)>0) 
+	{
+		a2=sqrt(v*v-1);
+		a3=0.5*(-v*a2 + log(v+a2) + PI*PI*tauE*tauE/3*v/a2)/(exp(2.5*(a0+2))+1);
+	}
 
-   b0 = (1+v)/tauE;
-   b1 = sqrt(2*PI*tauE)*((1+v)/(2*exp(b0)+1.28)+0.5*tauE/(2*exp(b0)+0.64))/(exp(-2.5*(b0+2))+1);
-   if ((-v-1-tauE)>0) 
-   {
-      b2=sqrt(v*v-1);
-	  b3=0.5*(v*b2 + log(-v+b2) - PI*PI*tauE*tauE/3*v/b2)/(exp(2.5*(b0+2))+1);
-   }
+	b0 = (1+v)/tauE;
+	b1 = sqrt(2*PI*tauE)*((1+v)/(2*exp(b0)+1.28)+0.5*tauE/(2*exp(b0)+0.64))/(exp(-2.5*(b0+2))+1);
+	if ((-v-1-tauE)>0) 
+	{
+		b2=sqrt(v*v-1);
+		b3=0.5*(v*b2 + log(-v+b2) - PI*PI*tauE*tauE/3*v/b2)/(exp(2.5*(b0+2))+1);
+	}
 
-   c0 = 1/tau;
-   c1 = 2*sqrt(2*PI*tau)*(1/(2*exp(c0)+1.28)+0.5*tau/(2*exp(c0)+0.64))/(exp(-2.5*(c0+2))+1);
+	c0 = 1/tau;
+	c1 = 2*sqrt(2*PI*tau)*(1/(2*exp(c0)+1.28)+0.5*tau/(2*exp(c0)+0.64))/(exp(-2.5*(c0+2))+1);
    
-   p = (a1 + a3 + b1 + b3 - c1);
+	p = (a1 + a3 + b1 + b3 - c1);
    
-   return p;
-
+	return p;
 }
-
 
 /*double PowerCoolIntCom(float DT, float v, float tau, float tauE, float gamma, double *Ps)
 {//integral of the cooling power of SIN junction 
 	//E = x, V=v, T=tau, [x]=[v]=[tau]
    
-   double p, q;
-   double a, a1, a2;
-   double b, b1;
-   double x, dx;
-   int l, inf;
-   double po; //power
-   double tmPs=0;
-   FILE *f8; //density of states
-  // double tmp1, tmp2;
+	double p, q;
+	double a, a1, a2;
+	double b, b1;
+	double x, dx;
+	int l, inf;
+	double po; //power
+	double tmPs=0;
+	FILE *f8; //density of states
+	//double tmp1, tmp2;
    
-   po=0;
-   *Ps=0;
-   v=abs(v);
+	po=0;
+	*Ps=0;
+	v=abs(v);
 
-   dx=0.2e-3;
-   inf=(int)(20/dx);
+	dx=0.2e-3;
+	inf=(int)(20/dx);
 
-   //f8=fopen("DOS.txt","w");
+	//f8=fopen("DOS.txt","w");
   
-   x=dx;
+	x=dx;
 
 #pragma omp parallel for default(shared) private(x, a, b, p, q, b1, a2) reduction(+:po, tmPs) num_threads(THREADS)
-	   for (l=0; l<=inf; l++)
-	   {  
-		   x=dx*(l+1);
-		   a=x*x-gamma*gamma-DT;	   b=-2*x*gamma;
+	for (l=0; l<=inf; l++)
+	{  
+		x=dx*(l+1);
+		a=x*x-gamma*gamma-DT;
+		b=-2*x*gamma;
 
-		   //tmp1=sqrt(a*a+b*b);
-		   //p=sqrt((a+tmp1)/2); q=sqrt((tmp1-a)/2);
-			p=sqrt((a+sqrt(a*a+b*b))/2); q=sqrt((sqrt(a*a+b*b)-a)/2);
+		//tmp1=sqrt(a*a+b*b);
+		//p=sqrt((a+tmp1)/2); q=sqrt((tmp1-a)/2);
+		p=sqrt((a+sqrt(a*a+b*b))/2); 
+  		q=sqrt((sqrt(a*a+b*b)-a)/2);
 
-		   b1=(x*p+gamma*q)/(p*p + q*q); //fprintf(f8,"%f %f\n",x,b1);
+		b1=(x*p+gamma*q)/(p*p + q*q); 
+  
+  		//fprintf(f8,"%f %f\n",x,b1);
 
-		   a2=1/(exp((x-v)/tauE)+ 1); a1=1/(exp(x/tau)+ 1);
+		a2=1/(exp((x-v)/tauE)+ 1); 
+  		a1=1/(exp(x/tau)+ 1);
 
-		  // tmp2=b1*(a2-a1);
+		// tmp2=b1*(a2-a1);
 
-		   po+=(x-v)*b1*(a2-a1);
-		   tmPs+=x*b1*(a2-a1);
-	   }
+		po+=(x-v)*b1*(a2-a1);
+		tmPs+=x*b1*(a2-a1);
+	}
  
-   //fprintf(f8,"\n");
-   double po2 = po;
-   double tmPs2 = tmPs;
-   po = 0;
-   tmPs = 0;
-   x=-dx;
-   #pragma omp parallel for default(shared) private(x, a, b,  p, q, b1, a2) reduction(+:po, tmPs) num_threads(THREADS)
-	   for (l=0; l<=inf; l++)
-	   {  
-		   x=-dx*(l+1);
-		   a=x*x-gamma*gamma-DT;	   b=-2*x*gamma;
-		   
-		   //tmp1=sqrt(a*a+b*b);
-		   //p=sqrt((a+tmp1)/2); q=-sqrt((tmp1-a)/2);
-			p=sqrt((a+sqrt(a*a+b*b))/2); q=-sqrt((sqrt(a*a+b*b)-a)/2);
-		   b1=-(x*p+gamma*q)/(p*p + q*q); //fprintf(f8,"%f %f\n",x,b1);
+	//fprintf(f8,"\n");
+	double po2 = po;
+	double tmPs2 = tmPs;
+	po = 0;
+	tmPs = 0;
+	x=-dx;
+#pragma omp parallel for default(shared) private(x, a, b,  p, q, b1, a2) reduction(+:po, tmPs) num_threads(THREADS)
+	for (l=0; l<=inf; l++)
+	{  
+		x=-dx*(l+1);
+		a=x*x-gamma*gamma-DT;
+  		b=-2*x*gamma;
 
-		   a2=1/(exp((x-v)/tauE)+ 1); a1=1/(exp(x/tau)+ 1);
+		//tmp1=sqrt(a*a+b*b);
+		//p=sqrt((a+tmp1)/2); q=-sqrt((tmp1-a)/2);
+		p=sqrt((a+sqrt(a*a+b*b))/2); 
+  		q=-sqrt((sqrt(a*a+b*b)-a)/2);
+		b1=-(x*p+gamma*q)/(p*p + q*q); 
+  
+  		//fprintf(f8,"%f %f\n",x,b1);
+
+		a2=1/(exp((x-v)/tauE)+ 1);
+  		a1=1/(exp(x/tau)+ 1);
 		
-		   //tmp2=b1*(a2-a1);
+		//tmp2=b1*(a2-a1);
 
-		   po+=(x-v)*b1*(a2-a1);
-		   tmPs+=x*b1*(a2-a1);
+		po+=(x-v)*b1*(a2-a1);
+		tmPs+=x*b1*(a2-a1);
 		}
-   //fclose(f8);
+	//fclose(f8);
    
-   po=(po+po2)*dx;
-   *Ps=(tmPs+tmPs2)*dx;
+	po=(po+po2)*dx;
+	*Ps=(tmPs+tmPs2)*dx;
    
-   return po;
+	return po;
 
 }*/
 
@@ -280,170 +286,176 @@ double AndCurrent(float DT, float v, float tauE, float Wt, float tm)
 	//Wt - omega with ~ from Vasenko 2010
 	//dd - 1/tm, energy of pair breaking
    
-   double i, v1;
-   double a0, a1, a2; 
-   double x; //energy
-   float dx;
-   int l, inf;
-   //FILE *f9;
+	double i, v1;
+	double a0, a1, a2; 
+	double x; //energy
+	float dx;
+	int l, inf;
+	//FILE *f9;
   
-   dx=0.2e-3;
-   inf=(int)(DT/dx)-1;
+	dx=0.2e-3;
+	inf=(int)(DT/dx)-1;
 
-   i=0;
-   x=dx;
-   v1=abs(v);
+	i=0;
+	x=dx;
+	v1=abs(v);
 
-   //f9=fopen("SINi.dat","w");
+	//f9=fopen("SINi.dat","w");
+	
 //#pragma omp parallel for default(shared) private(a0, a1, a2) reduction(+:i) num_threads(THREADS)
-   for (l=0; l<=inf-1; l++)
-   {  
-	   a0 = tanh((x + v)/(2*tauE));
-	   a1 = tanh((x - v)/(2*tauE));
-       a2 = 2*Wt*sqrt(DT*DT-x*x)/tm/(pow(2*Wt*x - x*sqrt(DT*DT-x*x)/DT,2) + (DT*DT-x*x)/pow(DT*tm,2));
-	   i += DT/sqrt(DT*DT-x*x)*(a0-a1)*a2;
-	   //fprintf(f9,"%g %g\n", x, i); 
-	   x += dx;
-   }
-  
-   i=i*dx;
-   return i;
-
-   //fclose(f9); 
-
+	for (l=0; l<=inf-1; l++)
+	{  
+		a0 = tanh((x + v)/(2*tauE));
+		a1 = tanh((x - v)/(2*tauE));
+		a2 = 2*Wt*sqrt(DT*DT-x*x)/tm/(pow(2*Wt*x - x*sqrt(DT*DT-x*x)/DT,2) + (DT*DT-x*x)/pow(DT*tm,2));
+		i += DT/sqrt(DT*DT-x*x)*(a0-a1)*a2;
+		//fprintf(f9,"%g %g\n", x, i); 
+		x += dx;
+	}
+	
+   	i=i*dx;
+	return i;
+	//fclose(f9); 
 }
 
 double PowerCoolInt(float DT, float v, float tau, float tauE, double *Ps)
 {//integral of the cooling power of SIN junction 
 	//E = x, V=v, T=tau, [x]=[v]=[tau]
    
-   double p, q;
-   double a, a1, a2;
-   double b, b1;
-   double x, dx, de;
-   int l, inf;
-   double po; //power   
-   FILE *f8; //density of states
+	double p, q;
+	double a, a1, a2;
+	double b, b1;
+	double x, dx, de;
+	int l, inf;
+	double po; //power   
+	FILE *f8; //density of states
    
-   po=0;
-   *Ps=0;
-   v=abs(v);
+	po=0;
+	*Ps=0;
+	v=abs(v);
 
-   dx=2e-4;
-   inf=(int)(20/dx);
+	dx=2e-4;
+	inf=(int)(20/dx);
 
-   //f8=fopen("DOS.txt","w");
+	//f8=fopen("DOS.txt","w");
   
-   de = DT;
-   x=de+dx;
+	de = DT;
+	x=de+dx;
 
 //#pragma omp parallel for default(shared) private(x, a, a1, a2) reduction(+:po) num_threads(THREADS)
-   for (l=0; l<=inf; l++)
-   {  
-	   a=sqrt(x*x-DT*DT);	   
+	for (l=0; l<=inf; l++)
+	{  
+		a=sqrt(x*x-DT*DT);	   
 
-	   a2=1/(exp((x-v)/tauE)+ 1); a1=1/(exp(x/tau)+ 1);
+		a2=1/(exp((x-v)/tauE)+ 1);
+		a1=1/(exp(x/tau)+ 1);
 
-	   po+=abs(x)*(x-v)*(a2-a1)/a; //po+=abs(x)*(x-v)/a*(a2-a1);
-	   *Ps+=abs(x)*(x)*(a2-a1)/a;
-	   x+=dx;
-	   
-   }
-
-   x=-de-dx;
+		po+=abs(x)*(x-v)*(a2-a1)/a; //po+=abs(x)*(x-v)/a*(a2-a1);
+		*Ps+=abs(x)*(x)*(a2-a1)/a;
+		x+=dx;
+	}
+	
+	x=-de-dx;
   
 //#pragma omp parallel for default(shared) private(x, a, a1, a2) reduction(+:po) num_threads(THREADS)
 	for (l=0; l<=inf; l++)
-   {  
-	   a=sqrt(x*x-DT*DT);	   
+	{  
+		a=sqrt(x*x-DT*DT);	   
 
-	   a2=1/(exp((x-v)/tauE)+ 1); a1=1/(exp(x/tau)+ 1);
+		a2=1/(exp((x-v)/tauE)+ 1);
+		a1=1/(exp(x/tau)+ 1);
 
-	   po += abs(x)*(x-v)*(a2-a1)/a;
-	   *Ps += abs(x)*x*(a2-a1)/a;
-	   x-=dx;
-   }
+		po += abs(x)*(x-v)*(a2-a1)/a;
+		*Ps += abs(x)*x*(a2-a1)/a;
+		x-=dx;
+	}
 
-   po=po*dx;
-   *Ps=*Ps*dx;
+	po=po*dx;
+	*Ps=*Ps*dx;
    
-   return po;
+	return po;
 
 }
 
-
 long CFoo::CEB_2eq_parallel_lite(void)
 {
-  FILE *f2, *f3, *f3old, *f4, *f5;  //IV 
-  int k,q,j,l,n;
-  int Nt, NV;
-
-  double I[10002], I1[10002];
-  float I_A[10002], I_As[10002];
-  double V[10002];
-  double Ib; //bias for electrone cooling
-
-  double I0; //units of current
-
-  double Vstr, Vfin; //range of voltage
-
-  float Z; // heat exchange in normal metal in nW/(K^5*micron^3)
-
-  double Delta;
-
-  double E, dE, E1; //energy, eV
-
-  double int1, int2; //integrals
-
-  double Pbg; //background power, pW
-
-  double Te, dT, Ts; //electron and phonon temperature
-
-  double tau, Vg, tauE, tauC, T1, T2; //dimentionless variables
+	FILE *f2, *f3, *f3old, *f4, *f5;  //IV 
 	
-  double tauold;
-
-  double Pe_p, Pabs, Pleak, Pheat, Pcool, P, Pcool1, Ps, Ps1, Pand;
-
-  double Rsg, Rsg1; //subgap resistance of 1 SIN, kOhm 
-
-  double Rleak; //leakage resistance of SIN
-
-  double Rsin; //normal resistance of single SIN junction
-
-  double Rn1, Rleak1, V1, V2, Vcur; //for thermometer junctions
-
-  double G, dPdT, dIdT, dIdV, dPdV, Sv, dPT, mm; //for noise 
+	int k,q,j,l,n;
 	
-  double dP, dI, dPdI;
+	int Nt, NV;
+
+	double I[10002], I1[10002];
 	
-  double NEP, NEPs, NEPep, NEPa, NEPph;
+	float I_A[10002], I_As[10002];
 	
-  double vn, in; //amplifier noise
-
-  double Tp0, x, DeltaT;
+	double V[10002];
 	
-  double eps; //coefficient between Ps and Ts
+	double Ib; //bias for electrone cooling
 
-  double NoiA; //amplifier noise
+	double I0; //units of current
 
-  float G_NIS, G_e; 
+	double Vstr, Vfin; //range of voltage
+
+	float Z; // heat exchange in normal metal in nW/(K^5*micron^3)
+
+	double Delta;
+
+	double E, dE, E1; //energy, eV
+
+	double int1, int2; //integrals
+
+	double Pbg; //background power, pW
+
+	double Te, dT, Ts; //electron and phonon temperature
+
+	double tau, Vg, tauE, tauC, T1, T2; //dimentionless variables
 	
-  float Wt;
+	double tauold;
 
-  float tm;
+	double Pe_p, Pabs, Pleak, Pheat, Pcool, P, Pcool1, Ps, Ps1, Pand;
 
-  double I_A0, I_As0;
+	double Rsg, Rsg1; //subgap resistance of 1 SIN, kOhm 
 
-  float ii; //coefficient for Andreev current
+	double Rleak; //leakage resistance of SIN
 
-  clock_t start, finish;
-  start=clock();
-  char c=0;
+	double Rsin; //normal resistance of single SIN junction
+
+	double Rn1, Rleak1, V1, V2, Vcur; //for thermometer junctions
+
+	double G, dPdT, dIdT, dIdV, dPdV, Sv, dPT, mm; //for noise 
+	
+	double dP, dI, dPdI;
+	
+	double NEP, NEPs, NEPep, NEPa, NEPph;
+	
+	double vn, in; //amplifier noise
+
+	double Tp0, x, DeltaT;
+	
+	double eps; //coefficient between Ps and Ts
+
+	double NoiA; //amplifier noise
+
+	float G_NIS, G_e; 
+	
+	float Wt;
+
+	float tm;
+
+	double I_A0, I_As0;
+
+	float ii; //coefficient for Andreev current
+
+	clock_t start, finish;
+	
+	start=clock();
+	
+	char c=0;
 
 
       
-    // --------- known/guessed physical parameters
+	// --------- known/guessed physical parameters
 
 	Pbg = par[0]; 
 
@@ -513,147 +525,209 @@ long CFoo::CEB_2eq_parallel_lite(void)
 	_gcvt_s(cPbgG, sizeof(cPbgG), Pbg, 5);
 	strcat(cPbgG, " pW G.txt");*/
 
-  f3old=fopen("Te_old.txt", "w"); //OL-55\OL55 299mK 0GHz.txt OL57 298,4mK.txt
-  f3=fopen("Te.txt", "r");
-  //f3=fopen(cPbgTe, "r");
-  if (f3!=NULL)
-  {
-	while (fscanf(f3, "%c", &c)!=EOF) fprintf(f3old, "%c", c);
+	f3old=fopen("Te_old.txt", "w"); //OL-55\OL55 299mK 0GHz.txt OL57 298,4mK.txt
+	f3=fopen("Te.txt", "r");
+	//f3=fopen(cPbgTe, "r");
+	
+	if (f3!=NULL)
+	{
+		while (fscanf(f3, "%c", &c)!=EOF) 
+			fprintf(f3old, "%c", c);
+		fclose(f3);
+	}
+	
+	fclose(f3old);
+
+	/*f2=fopen(cPbgNoise,"w");
+	f3=fopen(cPbgTe,"w"); 
+	f4=fopen(cPbgNEP,"w");
+	f5=fopen(cPbgG,"w");*/
+
+	f2=fopen("Noise.dat","w");
+	f3=fopen("Te.txt","w"); 
+	f4=fopen("NEP.dat","w");
+	f5=fopen("G.txt","w");
+
+	fclose(f2);
 	fclose(f3);
-  }
-  fclose(f3old);
+	fclose(f4);
+	fclose(f5);
 
-  	 /*f2=fopen(cPbgNoise,"w");
-	 f3=fopen(cPbgTe,"w"); 
-  	 f4=fopen(cPbgNEP,"w");
-	 f5=fopen(cPbgG,"w");*/
+	//Rn1=57e3/M; //0.5*3.57e3;
+	
+	//Rleak1 = Rn1/gamma;
 
-	 f2=fopen("Noise.dat","w");
-	 f3=fopen("Te.txt","w"); 
-  	 f4=fopen("NEP.dat","w");
-	 f5=fopen("G.txt","w");
+	//---------- normalized constants
 
-	 fclose(f2);
-	 fclose(f3);
-	 fclose(f4);
-	 fclose(f5);
+	Rn=(Rn-Ra)/2;
+	
+	//Rleak=Rn/gamma; //Ohm, is not needed if Gamma<>0
 
-	// Rn1=57e3/M; //0.5*3.57e3;
-	// Rleak1 = Rn1/gamma;
+	I0 = Delta/Rn*KBOL*1e9;
+	
+	Vg = Delta / 11604.505;
+	
+	/*Vg = Delta*KBOL;*/  
+	
+	printf("%lf\n",Vg);
 
-	 //---------- normalized constants
+	tau = Ts/Delta;
+	
+	tauE = Te/Delta;
+	
+	tauC = Tc/Delta;
 
-	 Rn=(Rn-Ra)/2;
-	 //Rleak=Rn/gamma; //Ohm, is not needed if Gamma<>0
-
-	 I0 = Delta/Rn*KBOL*1e9;
-	 Vg = Delta / 11604.505;
-	 /*Vg = Delta*KBOL;*/  printf("%lf\n",Vg);
-
-	 tau = Ts/Delta;
-	 tauE = Te/Delta;
-	 tauC = Tc/Delta;
-
-	 //---------- calculation parameters
+	//---------- calculation parameters
 
 
-	 //voltage step, V
-	 Vfin=dVFinVg*Vg; //0.8
-	 Vstr=dVStartVg*Vg;
-	 NV=(Vfin/*-0.0*Vg*/)/dV;
-	 if (Inum==NULL) Inum=new double[NV-1];
-	 if (Vnum==NULL)  Vnum=new double[NV-1];
-	 for (j=0; j<=NV; j++) 
-		 V[j]=Vstr+((j-0)*dV); // = [V]
+	//voltage step, V
+	
+	Vfin=dVFinVg*Vg; //0.8
+	
+	Vstr=dVStartVg*Vg;
+	
+	NV=(Vfin/*-0.0*Vg*/)/dV;
+	
+	if (Inum==NULL) 
+		Inum=new double[NV-1];
+	
+	if (Vnum==NULL)  
+		Vnum=new double[NV-1];
+	
+	for (j=0; j<=NV; j++) 
+		V[j]=Vstr+((j-0)*dV); // = [V]
 
-	 Tp0=Tp; DeltaT=1;
+	Tp0=Tp;
+	
+	DeltaT=1;
 
-	 /*f2=fopen(cPbgNoise,"a");
-	 f3=fopen(cPbgTe,"a"); 
-  	 f4=fopen(cPbgNEP,"a");
-	 f5=fopen(cPbgG,"a");*/
+	/*f2=fopen(cPbgNoise,"a");
+	f3=fopen(cPbgTe,"a"); 
+  	f4=fopen(cPbgNEP,"a");
+	f5=fopen(cPbgG,"a");*/
 
-	 f2=fopen("Noise.dat","a");
-	 f3=fopen("Te.txt","a"); 
-  	 f4=fopen("NEP.dat","a");
-	 f5=fopen("G.txt","a");
+	f2=fopen("Noise.dat","a");
+	f3=fopen("Te.txt","a"); 
+  	f4=fopen("NEP.dat","a");
+	f5=fopen("G.txt","a");
 
-	 fprintf(f2,"Voltage\tNOISEep\tNOISEs\tNOISEa\tNOISE\tNOISEph\tNOISE^2-NOISEph^2\n");
-	 fprintf(f3,"Voltage\tCurrent\tIqp\tIand\tV/Rleak\tTe\tTs\tDeltaT\tPand\tPleak\tPabs\tPcool\n");
-	 fprintf(f4,"Voltage\tCurrent\tNEPep\tNEPs\tNEPa\tNEP\tNEPph\tSv\tNEP^2-NEPph^2\n");
-	 fprintf(f5,"Voltage\tGe\tGnis\n");
+	fprintf(f2,"Voltage\tNOISEep\tNOISEs\tNOISEa\tNOISE\tNOISEph\tNOISE^2-NOISEph^2\n");
+	fprintf(f3,"Voltage\tCurrent\tIqp\tIand\tV/Rleak\tTe\tTs\tDeltaT\tPand\tPleak\tPabs\tPcool\n");
+	fprintf(f4,"Voltage\tCurrent\tNEPep\tNEPs\tNEPa\tNEP\tNEPph\tSv\tNEP^2-NEPph^2\n");
+	fprintf(f5,"Voltage\tGe\tGnis\n");
 
-	 FILE* check=fopen("conv.txt", "w");
+	FILE* check=fopen("conv.txt", "w");
 
-	 //j=5;
-	 for (j=1; j<=NV-1; j++)   //next voltage
-	 {
-		 for (n=1; n<=5; n++)   //next interation
-	     {
+	//j=5;
+	
+	for (j=1; j<=NV-1; j++)   //next voltage
+	{
+		for (n=1; n<=5; n++)   //next interation
+		{
 			//T1=Tp; T2=Tp;
-			T1=0; T2=3/1.764;
+			
+			T1=0; 
+			
+			T2=3/1.764;
+			
 			tauE=(T1+T2)/2;
-        	DeltaT = sqrt(1-pow(Ts/Tc,float(3.2))); 
+			
+			DeltaT = sqrt(1-pow(Ts/Tc,float(3.2))); 
+			
 			for (l=1; l<=15; l++) //next iteration
 				{
-				    tauE=(T1+T2)/2;
-			//DeltaT = sqrt(1-pow(Ts/Tc,float(3.2)));
-		   /* tauold=0;
-			while(abs(tauold-tauE)/tauE>0.001) //next iteration
-				{
-					tauold=tauE;*/
+					tauE=(T1+T2)/2;
+					
+					//DeltaT = sqrt(1-pow(Ts/Tc,float(3.2)));
+					
+					/*tauold=0;
+     
+     					while(abs(tauold-tauE)/tauE>0.001) //next iteration
+	  				{
+						tauold=tauE;*/
+					
 					//fprintf(check, "%d %lf\n", l, tauE);
+					
 					//I[j] = 1e-12*currentIntCom(DeltaT,V[j]/Vg,tau,tauE,gamma)*I0; //in nA			1-53-240.txt		
+					
 					I[j] = currentInt(DeltaT,V[j]/Vg,tau,tauE)*I0 + V[j]/Rleak * 1e9; //in nA
+					
 					I_A[j] = ii*AndCurrent(DeltaT, V[j]/Vg, tauE, Wt, tm)*I0; //in nA
+					
 					Pe_p = Z * Vol * (pow(Tp,TephPOW/*7,6,5*/) - pow(tauE * Delta,TephPOW/*7,6,5*/)) * 1e3; //pW 100mk_BBoff_sym_Inew_report.txt
+					
 					Pabs = I[j]*I[j] * Ra * 1e-6;   //pW
+					
 					/*
 					//Rsg = 2 * dV/abs(I[j+1]-I[j-1])*1e9; //in Ohm 2 from derivative 
+     
 					//Pcool =  1*PowerCoolIntCom(DeltaT, V[j]/Vg, tau, tauE,gamma, &Ps)* Vg*Vg/Rsin * 1e12;  //pW, 0.1 - experimental parameter
 					*/
+					
 					Pleak = 2.0* V[j]*V[j] /Rleak * 1e12; // pW, 2 because of 2 SIN
+					
 					Pand = (I_A[j]*1e-3) /*uA*/ * (I_A[j]*1e-3) /*uA*/ * Ra /*Ohm*/ + 2.0 * (I_A[j]*1e3) /*pA*/ * V[j] /*V*/; //pW,  absorber + Andreev
+					
 					Pcool =  1.*PowerCoolInt(DeltaT, V[j]/Vg, tau, tauE, &Ps)* Vg*Vg/Rn * 1e12;  //pW, 0.1 - experimental parameter
+					
 					Ps=Ps* Vg*Vg/Rn * 1e12; //returning power from S to N
+					
 					Pheat = Pe_p + 1.0*Pabs + 1.0*Pand + dPbg + 2.0*beta*Ps + 1.0*Pleak; // + Pand;
+					
 					P=Pheat - 2.0*Pcool;
-					if (P<0) {T2=tauE;}	
-					else {T1=tauE;}
+					
+					if (P<0) 
+					{
+						T2=tauE;
+					}	
+						
+					else 
+					{
+						T1=tauE;
+					}
+					
 					/*tauE=(T1+T2)/2;
-				    	Te = tauE*Delta;
-				   	Ts = tau*Delta;
+     
+     					Te = tauE*Delta;
+	  
+					Ts = tau*Delta;
+     
 					DeltaT = sqrt(1-pow(Ts/Tc,float(3.2)));*/
+					
 					//DeltaT=1; 
 				}
-			}
-	   //DeltaT=1; // !!!
-	   Te = tauE*Delta;
-	   Ts = tau*Delta;
-	   DeltaT = sqrt(1-pow(Ts/Tc,float(3.2)));
+		}
+		
+		//DeltaT=1; // !!!
+		
+		Te = tauE*Delta;
+		
+		Ts = tau*Delta;
+		
+		DeltaT = sqrt(1-pow(Ts/Tc,float(3.2)));
 
-	   I[j]=currentInt(DeltaT, V[j]/Vg,tau,tauE)*I0 + V[j]/Rleak * 1e9;
-	   I_A[j] = ii*AndCurrent(DeltaT, V[j]/Vg, tauE, Wt, tm)*I0;
+		I[j]=currentInt(DeltaT, V[j]/Vg,tau,tauE)*I0 + V[j]/Rleak * 1e9;
+		
+		I_A[j] = ii*AndCurrent(DeltaT, V[j]/Vg, tauE, Wt, tm)*I0;
 	   
-	   fprintf(f3,"%f\t%g\t%g\t%g\t%f\t%f\t%g\t%g\t%g\t%g\t%g\t%g\n", M*(2*V[j]+(I[j]*1e-9+1.0e-9*I_A[j])*Ra), MP*1e-9*(I[j]+I_A[j]), I[j]*MP*1e-9, I_A[j]*MP*1e-9, (V[j]/Rleak * 1e9)*MP, Te, Ts, DeltaT, Pand, Pleak, Pabs, Pcool);
-	   printf("Voltage: %g Current: %g\n", M*(2*V[j]+(I[j]*1e-9+1.0e-9*I_A[j])*Ra), MP*1e-9*(I[j]+I_A[j])/*, I[j]*MP*1e-9, I_A[j]*MP*1e-9, Pand, Pleak*/); 
+		fprintf(f3,"%f\t%g\t%g\t%g\t%f\t%f\t%g\t%g\t%g\t%g\t%g\t%g\n", M*(2*V[j]+(I[j]*1e-9+1.0e-9*I_A[j])*Ra), MP*1e-9*(I[j]+I_A[j]), I[j]*MP*1e-9, I_A[j]*MP*1e-9, (V[j]/Rleak * 1e9)*MP, Te, Ts, DeltaT, Pand, Pleak, Pabs, Pcool);
+		printf("Voltage: %g Current: %g\n", M*(2*V[j]+(I[j]*1e-9+1.0e-9*I_A[j])*Ra), MP*1e-9*(I[j]+I_A[j])/*, I[j]*MP*1e-9, I_A[j]*MP*1e-9, Pand, Pleak*/); 
 
-	   //fprintf(f4,"%f %f\n", M*(2*V[j]+I[j]*Ra*1e-9), 2*Rsg);  
-	   Inum[j-1]= MP*1e-9*(I[j]+I_A[j]);
-	   Vnum[j-1]=M*(2*V[j]+((I[j]+I_A[j])*Ra*1e-9));
-
-      
- 
+		//fprintf(f4,"%f %f\n", M*(2*V[j]+I[j]*Ra*1e-9), 2*Rsg);  
+		Inum[j-1]= MP*1e-9*(I[j]+I_A[j]);
+		
+		Vnum[j-1]=M*(2*V[j]+((I[j]+I_A[j])*Ra*1e-9));
 
 //----- NEP -------------------------------------
 //308mK_1.txt SampleC_200mK_48bolo.txt OL65_305mK_0.txt OL65 OPA111.txt OL76_304.txt
-        dT=0.005;
+		
+		dT=0.005;
 
 		vn=(3.2e-9)*sqrt(2.0); //V/sqrt(Hz) //for 2 amp *sqrt(2) AD745
 		in=(6.9e-15)*1/sqrt(2.0); //A/sqrt(Hz)//for 2 amp *1/sqrt(2)
 
-		//vn=(8.0e-9)*sqrt(2.0); //V/sqrt(Hz) //for 2 amp *sqrt(2) OPA111
-		//in=(0.8e-15)*1/sqrt(2.0); //A/sqrt(Hz)//for 2 amp *1/sqrt(2)
+//		vn=(8.0e-9)*sqrt(2.0); //V/sqrt(Hz) //for 2 amp *sqrt(2) OPA111
+//		in=(0.8e-15)*1/sqrt(2.0); //A/sqrt(Hz)//for 2 amp *1/sqrt(2)
 
 //		vn=(0.9e-9)*sqrt(2.0); //V/sqrt(Hz) //for 2 amp *sqrt(2) AD797
 //		in=(2.0e-12)*1/sqrt(2.0); //A/sqrt(Hz)//for 2 amp *1/sqrt(2)
@@ -665,9 +739,13 @@ long CFoo::CEB_2eq_parallel_lite(void)
 //		in=(0.8e-15)*1/sqrt(2.0); //A/sqrt(Hz)//for 2 amp *1/sqrt(2)
 
 		dPT = PowerCoolInt(DeltaT, V[j]/Vg, tau, tauE + dT/Delta, &Ps) - PowerCoolInt(DeltaT, V[j]/Vg, tau, tauE - dT/Delta, &Ps);
+		
         	dPdT = Vg*Vg/Rn*1e12*(dPT)/(2*dT); //pW/K
+		
 	    	dIdT = I0*(currentInt(DeltaT,V[j]/Vg,tau,tauE + dT/Delta) - currentInt(DeltaT,V[j]/Vg,tau,tauE-dT/Delta))/(2*dT); //nA/K
+		
 	    	dIdV = (I0*(currentInt(DeltaT,V[j+1]/Vg,tau,tauE)+ ii * AndCurrent(DeltaT, V[j+1]/Vg, tauE, Wt, tm) - currentInt(DeltaT,V[j-1]/Vg,tau,tauE)-ii*AndCurrent(DeltaT, V[j-1]/Vg, tauE, Wt, tm)) )/(2*dV); //nA/V
+		
 	    	dPdV = Vg*Vg/Rn*1e12*(PowerCoolInt(DeltaT,V[j+1]/Vg, tau, tauE, &Ps) - PowerCoolInt(DeltaT,V[j-1]/Vg, tau, tauE, &Ps))/(2*dV); //pW/V
 
         	G_NIS = dPdT; G_e = 5*Z*Vol*pow(Te,4)* 1e3; //pW/K
@@ -687,35 +765,45 @@ long CFoo::CEB_2eq_parallel_lite(void)
 		//----- NEP SIN approximation ----------------------------
 
 		dI = 2*EL*abs(I[j])/pow(dIdV*Sv,2)*1e9; //pW^2/Hz
-	    	dPdI = 2*2*EL*Pcool/(dIdV*Sv)*1e9; //pW^2/Hz, second '2' is from comparizon with integral
+		
+	    	dPdI = 2*2*EL*Pcool/(dIdV*Sv)*1e9; //pW^2/Hz, second '2' is from comparison with integral
+		
 		mm=log(sqrt(2*PI*KBOL*Te*Vg)/(2*abs(I[j])*Rn*1e-9));
+		
 	    	dP = (0.5 + mm*mm)*(KBOL*Te)*(KBOL*Te)*abs(I[j])*EL*1e-9*1e24; //pW^2/Hz
+		
 	    	NEPs = 2*(dI - 2*dPdI + dP); ////pW^2/Hz  (2) //all terms positive
+		
 		//fprintf(f5,"%g %g %g %g\n",  M*(2*V[j]+I[j]*Ra*1e-9), dI, 2*dPdI, dP); 
 
-       	//----- NEP SIN integral ----------------------------
+//----- NEP SIN integral ----------------------------
 
-       		/* mm = NEPInt(DeltaT,V[j]/Vg,tau,tauE, &dI, &dP, &dPdI);
+		/* mm = NEPInt(DeltaT,V[j]/Vg,tau,tauE, &dI, &dP, &dPdI);
+
 		dI = EL*I0*dI/pow(dIdV*Sv,2)*1e9; //pW^2/Hz
-	    	dPdI = dPdI/(dIdV*Sv)*EL*Vg*Vg/Rn*1e12*1e9; //pW^2/Hz
-	    	dP = dP*Vg*Vg*Vg/Rn*EL*1e24; //pW^2/Hz 
+  
+		dPdI = dPdI/(dIdV*Sv)*EL*Vg*Vg/Rn*1e12*1e9; //pW^2/Hz
+  
+		dP = dP*Vg*Vg*Vg/Rn*EL*1e24; //pW^2/Hz 
         
-	    	NEPs = 2*(dI - 2*dPdI + dP); ////pW^2/Hz  (2)  
+		NEPs = 2*(dI - 2*dPdI + dP); ////pW^2/Hz  (2)  
+  
 		fprintf(f9,"%g %g %g %g\n",  M*(2*V[j]+I[j]*Ra*1e-9), dI, 2*dPdI, dP); */
  
-		//-----------------------------------------------
-		//-----------------------------------------------
+//-----------------------------------------------
+//-----------------------------------------------
 		
-        	NEPph = sqrt(M*MP*2*Pbg* 0 *1e9*HPLANCK*1e-12 + pow(M*MP*Pbg*1e-12,2)/ 1e3 /1e9); //W/sqrt(Hz) at 0 GHz
+		NEPph = sqrt(M*MP*2*Pbg* 0 *1e9*HPLANCK*1e-12 + pow(M*MP*Pbg*1e-12,2)/ 1e3 /1e9); //W/sqrt(Hz) at 0 GHz
+		
 		//NEPph = sqrt(M*MP*2*Pbg* 350 *1e9*HPLANCK*1e-12 + pow(M*MP*Pbg*1e-12,2)/ 1.552 /1e9); //W/sqrt(Hz) at 350 GHz
+		
 		NEPph = NEPph*1e12; //pW
 
 		NEP = sqrt(M * MP *(NEPep + NEPs) + NEPa + NEPph*NEPph);  //all squares 
 
-		
 		fprintf(f2,"%g\t%g\t%g\t%g\t%g\t%g\t%g\n", M*(2*V[j]+I[j]*Ra*1e-9), sqrt(M * MP *NEPep)*1e9*abs(Sv), sqrt(M * MP *NEPs)*1e9*abs(Sv), sqrt(NoiA)*1e9, NEP*1e9*abs(Sv), NEPph*1e9*abs(Sv), 1e9*abs(Sv)*sqrt(NEP*NEP - NEPph*NEPph)); 
 
-        	fprintf(f4,"%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\n", M*(2*V[j]+I[j]*Ra*1e-9), MP*1e-9*(I[j]), sqrt(M * MP *NEPep)*1e-12, sqrt(M * MP *NEPs)*1e-12, sqrt(NEPa)*1e-12, NEP*1e-12, NEPph*1e-12, abs(Sv)*1e12, 1e-12*sqrt(NEP*NEP - NEPph*NEPph)); 
+		fprintf(f4,"%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\n", M*(2*V[j]+I[j]*Ra*1e-9), MP*1e-9*(I[j]), sqrt(M * MP *NEPep)*1e-12, sqrt(M * MP *NEPs)*1e-12, sqrt(NEPa)*1e-12, NEP*1e-12, NEPph*1e-12, abs(Sv)*1e12, 1e-12*sqrt(NEP*NEP - NEPph*NEPph)); 
 		
 		fprintf(f5,"%g\t%g\t%g\n", M*(2*V[j]+I[j]*Ra*1e-9), G_e, G_NIS); 
 		
@@ -723,20 +811,17 @@ long CFoo::CEB_2eq_parallel_lite(void)
 
 		//system("cls"); 
 	}
-    
+
 	fclose(f2);
 	fclose(f3);
 	fclose(f4);
 	fclose(f5);
 
-
-
 	finish=clock();
-     	double sTime=(double)(finish-start)/CLOCKS_PER_SEC;
-     	printf("\nTime spent: %f sec.", sTime);
- 
-	return NV-1;
+	double sTime=(double)(finish-start)/CLOCKS_PER_SEC;
+	printf("\nTime spent: %f sec.", sTime);
 
+	return NV-1;
 }
 
 #undef PI
