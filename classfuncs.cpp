@@ -48,7 +48,7 @@ CFoo::CFoo(int parnum)
 
 	par[5]=param[5]; VolS=par[5]; ToFit[5]=Fit[5]; //volume of superconductor
 
-    par[6]=param[6]; Z=par[6]; ToFit[6]=Fit[6]; // heat exchange in normal metal in nW/(K^5*micron^3)
+	par[6]=param[6]; Z=par[6]; ToFit[6]=Fit[6]; // heat exchange in normal metal in nW/(K^5*micron^3)
 
 	par[7]=param[7]; ZS=par[7]; ToFit[7]=Fit[7]; //sigma and volume of supercond-r
 
@@ -64,7 +64,7 @@ CFoo::CFoo(int parnum)
 
 	par[13]=param[13]; ii=par[13]; ToFit[13]=Fit[13]; //coefficient for Andreev current
 
-    par[14]=param[14]; Ra=par[14]; ToFit[14]=Fit[14]; //resistance of absorber, Ohm
+	par[14]=param[14]; Ra=par[14]; ToFit[14]=Fit[14]; //resistance of absorber, Ohm
 	
 	par[15]=param[15]; M=par[15]; ToFit[15]=Fit[15]; //number of bolometers in series,
 
@@ -73,12 +73,16 @@ CFoo::CFoo(int parnum)
 	par[17]=param[17]; Tp=par[17]; ToFit[17]=Fit[17]; //phonon temperature
 
 	par[18]=param[18]; dVFinVg=par[18]; ToFit[18]=Fit[18];
+	
 	par[19]=param[19]; dVStartVg=par[19]; ToFit[19]=Fit[19];
+	
 	par[20]=param[20]; dV=par[20]; ToFit[20]=Fit[20];
 
 	char fname[]="SINS1_53_240_303_mK.txt";  // default filename here. Format: two columns (voltage (V), current(A)), decimal delimiter: .
+	
 	//printf("Enter the name of file: \n"); //example: "ol g7-25nn\200mk_2g.txt"
 	//scanf("%[^\n]", fname); //your filename here	Iexp=NULL;
+	
 	Vexp=NULL;
 	Inum=NULL;
 	Vnum=NULL;
