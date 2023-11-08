@@ -1,6 +1,8 @@
 #include "header.h"
 long GetExp(char* fname, int iNumCols, int iColNum, double *&Iexp, double *&Vexp, bool bRemOffset)
-{/* Gets experimental values from file*/
+{	/* Gets experimental values 'Iexp' and 'Vexp' from file 'fname',
+	checking 'bRemOffset' if there is need to remove offsets*/
+	
 	FILE* in=fopen(fname, "r");
 	if (!in)
 	{
@@ -20,9 +22,9 @@ long GetExp(char* fname, int iNumCols, int iColNum, double *&Iexp, double *&Vexp
 	
 	//while (c!='\n') fscanf(in, "%c", &c);
 	//c=0;
+	
+	//while (fscanf(in, "%lf %lf %lf", &tmp, &tmp, &tmp)!=EOF) count++;	
 	while (fscanf(in, "%lf %lf", &tmp, &tmp)!=EOF) count++;
-
-	//while (fscanf(in, "%lf %lf %lf", &tmp, &tmp, &tmp)!=EOF) count++;
 	freopen(fname, "r", in);
 	count=count/iColNum;
 
