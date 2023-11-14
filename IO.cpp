@@ -76,7 +76,7 @@ long GetExp(char* fname, int iNumCols, int iColNum, double *&Iexp, double *&Vexp
 }
 
 void Resample(long countnum, long countexp, double *&Irex, double *&Vrex, double *&Iexp, double *&Vexp, double *Inum, double *Vnum)
-{/*Adaptation of experimental data for the fitting algorithm*/
+{/*Adaptation of experimental data for the fitting algorithm, resamples IV-curve for the specified range*/
 	long lLastPos=0;
 	long lCurPos=0, lLeft=0, lRight=0;
 	double dCurVal=0;
@@ -119,7 +119,7 @@ void Resample(long countnum, long countexp, double *&Irex, double *&Vrex, double
 	return;
 }
 double ChiSq(long countnum, double *Vnum, double* Inum, double* Irex)
-{
+{/*ChiSquare figure of merit calculation*/
 	double sum=0;
 	for (long i=0; i<countnum; i++)
 	{
@@ -129,7 +129,7 @@ double ChiSq(long countnum, double *Vnum, double* Inum, double* Irex)
 	return sum;
 }
 double ChiSqHi(long countnum, double *Vnum, double* Inum, double* Irex)
-{
+{/*ChiSquare figure of merit calculation*/
 	double sum=0;
 	for (long i=0; i<countnum; i++)
 	{
@@ -139,7 +139,7 @@ double ChiSqHi(long countnum, double *Vnum, double* Inum, double* Irex)
 	return sum;
 }
 double ChiSqDer(long countnum, double *Vnum, double* Inum, double* Irex)
-{
+{/*ChiSquare figure of merit calculation*/
 	double sum=0;
 	for (long i=0; i<countnum-1; i++)
 	{
@@ -150,7 +150,7 @@ double ChiSqDer(long countnum, double *Vnum, double* Inum, double* Irex)
 	return sum;
 }
 void GetDBStartPoint(double *par, const char *fname)
-{
+{ /*Not used for fitting now*/
 	CFoo foo(0);
 	FILE* DB=fopen(fname, "r");
 	int num, numentries=0, flag=0, indmin=0;
