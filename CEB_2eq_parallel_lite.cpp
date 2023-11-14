@@ -221,7 +221,7 @@ double PowerCoolInt(float DT, float v, float tau, float tauE, double *Ps)
 
 long CFoo::CEB_2eq_parallel_lite(void)
 {
-	FILE *f2, *f3, *f3old, *f4, *f5;	//IV 
+	FILE *f2, *f3, *f3old, *f4, *f5;					//IV 
 	
 	int k,q,j,l,n;
 	
@@ -233,51 +233,51 @@ long CFoo::CEB_2eq_parallel_lite(void)
 	
 	double V[10002];
 	
-	double Ib;	//bias for electron cooling
+	double Ib;								//bias for electron cooling
 
-	double I0;	//units of current
+	double I0;								//units of current
 
-	double Vstr, Vfin;	//range of voltage
+	double Vstr, Vfin;							//range of voltage
 
-	float Z;	//heat exchange in normal metal in nW / (K^5 * micron^3)
+	float Z;								//heat exchange in normal metal in nW / (K^5 * micron^3)
 
 	double Delta;
 
-	double E, dE, E1;	//energy, eV
+	double E, dE, E1;							//energy, eV
 
-	double int1, int2;	//integrals
+	double int1, int2;							//integrals
 
-	double Pbg;	//background power, pW
+	double Pbg;								//background power, pW
 
-	double Te, dT, Ts;	//electron and phonon temperature
+	double Te, dT, Ts;							//electron and phonon temperature
 
-	double tau, Vg, tauE, tauC, T1, T2;	//dimentionless variables
+	double tau, Vg, tauE, tauC, T1, T2;					//dimentionless variables
 	
 	double tauold;
 
-	double Pe_p, Pabs, Pleak, Pheat, Pcool, P, Pcool1, Ps, Ps1, Pand;
+	double Pe_p, Pabs, Pleak, Pheat, Pcool, P, Pcool1, Ps, Ps1, Pand;	//for power
 
-	double Rsg, Rsg1;	//subgap resistance of 1 SIN, kOhm 
+	double Rsg, Rsg1;							//subgap resistance of 1 SIN, kOhm 
 
-	double Rleak;	//leakage resistance of SIN
+	double Rleak;								//leakage resistance of SIN
 
-	double Rsin;	//normal resistance of single SIN junction
+	double Rsin;								//normal resistance of single SIN junction
 
-	double Rn1, Rleak1, V1, V2, Vcur;	//for thermometer junctions
+	double Rn1, Rleak1, V1, V2, Vcur;					//for thermometer junctions
 
-	double G, dPdT, dIdT, dIdV, dPdV, Sv, dPT, mm;	//for noise 
+	double G, dPdT, dIdT, dIdV, dPdV, Sv, dPT, mm;				//for noise 
 	
 	double dP, dI, dPdI;
 	
 	double NEP, NEPs, NEPep, NEPa, NEPph;
 	
-	double vn, in;	//amplifier noise
+	double vn, in;								//amplifier voltage and current noise
 
 	double Tp0, x, DeltaT;
 	
-	double eps;	//coefficient between Ps and Ts
+	double eps;								//coefficient between Ps and Ts
 
-	double NoiA;	//amplifier noise
+	double NoiA;								//amplifier noise
 
 	float G_NIS, G_e; 
 	
@@ -287,7 +287,7 @@ long CFoo::CEB_2eq_parallel_lite(void)
 
 	double I_A0, I_As0;
 
-	float ii;	//coefficient for Andreev current
+	float ii;								//coefficient for Andreev current
 
 	clock_t start, finish;
 	
@@ -297,57 +297,57 @@ long CFoo::CEB_2eq_parallel_lite(void)
       
 // --------- known/guessed physical parameters
 
-	Pbg = par[0]; 
+	Pbg = par[0]; 			//incoming power for all structure, pW
 
-	beta = par[1]; 
+	beta = par[1];			//returning power ratio, <1
 
-	TephPOW = par[2]; 
+	TephPOW = par[2];		//exponent for Te-ph
 
-	gamma = par[3]; 
+	gamma = par[3];			//gap smearing, not used, should be 0
 
-	Vol = par[4];  
+	Vol = par[4];			//volume of absorber, um^3
 
-	VolS = par[5]; 
+	VolS = par[5];			//volume of superconductor, um^3
 
-	Z = par[6]; 
+	Z = par[6];			//heat exchange in normal metal, nW/(K^5*um^3)
 
-	ZS = par[7]; 
+	ZS = par[7];			//sigma
 
-	Tc = par[8];
+	Tc = par[8];			//critical temperature, K
 
-	Rn = par[9] / M * MP;
+	Rn = par[9] / M * MP;		//normal resistance for 1 bolometer, Ohm
 
-	Rleak = par[10] / M * MP;
+	Rleak = par[10] / M * MP;	//leakage resistance for 1 bolometer, Ohm
 
-	Wt = par[11];
+	Wt = par[11];			//effective tunneling parameter
 
-	tm = par[12];
+	tm = par[12];			//magnetic scattering parameter
 
-	ii = par[13];
+	ii = par[13];			//coefficient for Andreev current
 
-	Ra = par[14];
-   
-	M = par[15];
+	Ra = par[14];			//normal resistance for 1 absorber, Ohm
 
-	MP = par[16];
+	M = par[15];			//number of bolometers in series
 
-	Tp = par[17];
+	MP = par[16];			//number of bolometers in parallel
 
-	dVFinVg = par[18];
+	Tp = par[17];			//phonon temperature, K
 
-	dVStartVg = par[19];
+	dVFinVg = par[18];		//voltage range end
 
-	dV = par[20];
+	dVStartVg = par[19];		//voltage range start
 
-	Te = Tp;	//is to be found
+	dV = par[20];			//voltage step, V
 
-	Ts = Tp;	//electron T in SC 
+	Te = Tp;			//electron temperature, is to be found, K
+
+	Ts = Tp;			//electron temperature in superconductor, K
 	
-	//Ib = 1.4;	//nA, for electron cooling
+	//Ib = 1.4;			//bias current for electron cooling, nA
 
-	dPbg = Pbg / M / MP;	//pW, per 1 bolometer
+	dPbg = Pbg / M / MP;		//incoming power for 1 bolometer, pW
 
-	Delta = 1.764 * Tc;	//in K , Vg[eV] = Tc * 1.764 * 86.25e-6
+	Delta = 1.764 * Tc;		//in K, Vg[eV] = Tc * 1.764 * 86.25e-6
 /*
  	char* cPbgNoise = new char[6];
 	_gcvt_s(cPbgNoise, sizeof(cPbgNoise), Pbg, 5);
@@ -393,10 +393,6 @@ long CFoo::CEB_2eq_parallel_lite(void)
 	fclose(f4);
 	fclose(f5);
 
-	//Rn1 = 57e3 / M;	//0.5*3.57e3;
-	
-	//Rleak1 = Rn1 / gamma;
-
 //---------- normalized constants
 
 	Rn = (Rn - Ra) / 2;
@@ -419,7 +415,7 @@ long CFoo::CEB_2eq_parallel_lite(void)
 
 	//voltage step, V
 	
-	Vfin = dVFinVg * Vg;	//0.8
+	Vfin = dVFinVg * Vg;
 	
 	Vstr = dVStartVg * Vg;
 	
