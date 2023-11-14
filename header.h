@@ -41,21 +41,21 @@ public:
 
 	double gamma;	//gap smearing, returned power
 
-	double Vol;	//volume of absorber in um^3
+	double Vol;	//volume of absorber
 
 	double VolS;	//volume of superconductor
 
-	double Z;	//heat exchange in normal metal in nW/(K^5*micron^3)
+	double Z;	//heat exchange in normal metal
 
 	double ZS;	//sigma of superconductor
 
 	double Tc;	//critical temperature of superconductor
 
-	double Rn;	//normal resistance of 1 SIN, Ohm 
+	double Rn;	//normal resistance of bolometer
 
-	double Ra;	//resistance of absorber, Ohm
+	double Ra;	//resistance of absorber
 	
-	int M;		//number of bolometers in series,
+	int M;		//number of bolometers in series
 
 	int MP;		//number of bolometers in parallel
 
