@@ -31,43 +31,43 @@ public:
 	int iParNum;
 	struct parametername;
 	
-	double Pbg; //power for all structure
+	double Pbg;	//power for all structure
 
-	double dPbg; //power for 1 bolometer
+	double dPbg;	//power for 1 bolometer
 
-	double beta; //returned power
+	double beta;	//returned power
 
-	int TephPOW; //returned power
+	int TephPOW;	//exponent for Te-ph
 
-	double gamma; //gap smearing, returned power
+	double gamma;	//gap smearing, returned power
 
-	double Vol; //volume of absorber in um^3
+	double Vol;	//volume of absorber in um^3
 
-	double VolS; //volume of superconductor
+	double VolS;	//volume of superconductor
 
-	double Z; // heat exchange in normal metal in nW/(K^5*micron^3)
+	double Z;	//heat exchange in normal metal in nW/(K^5*micron^3)
 
-	double ZS; //sigma and volume of supercond-r
+	double ZS;	//sigma of superconductor
 
-	double Tc; //critical temp of superconductor
+	double Tc;	//critical temperature of superconductor
 
-	double Rn; //normal resistance of 1 SIN, Ohm 
+	double Rn;	//normal resistance of 1 SIN, Ohm 
 
-	double Ra; //resistance of absorber, Ohm
+	double Ra;	//resistance of absorber, Ohm
 	
-	int M; //number of bolometers in series,
+	int M;		//number of bolometers in series,
 
-	int MP; // number of bolometers in parallel
+	int MP;		//number of bolometers in parallel
 
-	double Tp; //phonon temperature
+	double Tp;	//phonon temperature
 
-	double Rleak; //leakage resistance of SIN
+	double Rleak;	//leakage resistance of SIN
 
-	float Wt; //transparency of barter
+	float Wt;	//transparency of barter
 
-	float tm; //depairing energy
+	float tm;	//depairing energy
 
-	float ii; //coefficient for Andreev current
+	float ii;	//coefficient for Andreev current
 
 	double operator()(double dParam);	
 	long CEB_2eq_parallel_lite(void);
