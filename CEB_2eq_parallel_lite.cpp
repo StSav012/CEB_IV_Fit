@@ -281,9 +281,9 @@ long CFoo::CEB_2eq_parallel_lite(void)
 
 	float G_NIS, G_e; 
 	
-	float Wt;
+	float Wt;								//transparency of barrier
 
-	float tm;
+	float tm;								//depairing energy
 
 	double I_A0, I_As0;
 
@@ -319,9 +319,9 @@ long CFoo::CEB_2eq_parallel_lite(void)
 
 	Rleak = par[10] / M * MP;	//leakage resistance for 1 bolometer, Ohm
 
-	Wt = par[11];			//effective tunneling parameter
+	Wt = par[11];			//transparency of barrier
 
-	tm = par[12];			//magnetic scattering parameter
+	tm = par[12];			//depairing energy
 
 	ii = par[13];			//coefficient for Andreev current
 
