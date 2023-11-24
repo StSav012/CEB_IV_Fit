@@ -41,6 +41,7 @@ double current(float v, float tau)
 double currentInt(float DT, float v, float tau, float tauE)
 {//computes the current using exact integral 
 	/*'DT' is delta (energy gap), 'v' is voltage, 'tau' is for temperature, 'tauE' is for electron temperature*/
+	
 	double i, v1;
 	double a0, a1, a2; 
 	double x; //energy
@@ -96,6 +97,7 @@ double currentInt(float DT, float v, float tau, float tauE)
 double PowerCool(float v, float tau, float tauE)
 {//a procedure which computes the cooling power of SIN junction 
 	/*'v' is voltage, 'tau' is for temperature, 'tauE' is for electron temperature*/
+	
 	double p;
 	double a0, a1, a2, a3;
 	double b0, b1, b2, b3;
@@ -132,7 +134,8 @@ double AndCurrent(float DT, float v, float tauE, float Wt, float tm)
 {//computes the Andreev current using exact integral 
 	//Wt - omega with ~ from Vasenko 2010
 	//dd - 1/tm, energy of pair breaking
-	/*'DT' is delta (energy gap), 'v' is voltage, 'tauE' is for electron temperature, */
+	/*'DT' is delta (energy gap), 'v' is voltage, 'tauE' is for electron temperature, 'Wt' is fortransparency of barrier, 'tm' is for depairing energy*/
+	
 	double i, v1;
 	double a0, a1, a2; 
 	double x; //energy
@@ -168,6 +171,7 @@ double PowerCoolInt(float DT, float v, float tau, float tauE, double *Ps)
 {//integral of the cooling power of SIN junction 
 	//E = x, V = v, T = tau, [x] = [v] = [tau]
 	/*'DT' is delta (energy gap), 'v' is voltage, 'tau' is for temperature, 'tauE' is for electron temperature, 'Ps' is for SIN cooling power*/
+	
 	double p, q;
 	double a, a1, a2;
 	double b, b1;
