@@ -227,9 +227,9 @@ long CFoo::CEB_2eq_parallel_lite(void)
 {
 	FILE *f2, *f3, *f3old, *f4, *f5;					//Noise, Te, Te_old, NEP, G 
 	
-	int k,q,j,l,n;
+	int k,q,j,l,n;								//counters
 	
-	int Nt, NV;
+	int Nt, NV;								//numbers of temperature and voltage steps
 
 	double I[10002], I1[10002];
 	
@@ -271,9 +271,9 @@ long CFoo::CEB_2eq_parallel_lite(void)
 
 	double G, dPdT, dIdT, dIdV, dPdV, Sv, dPT, mm;				//for noise 
 	
-	double dP, dI, dPdI;
+	double dP, dI, dPdI;							//for power integrals
 	
-	double NEP, NEPs, NEPep, NEPa, NEPph;
+	double NEP, NEPs, NEPep, NEPa, NEPph;					//noise equivalent power
 	
 	double vn, in;								//amplifier voltage and current noise
 
@@ -283,7 +283,7 @@ long CFoo::CEB_2eq_parallel_lite(void)
 
 	double NoiA;								//amplifier noise
 
-	float G_NIS, G_e; 
+	float G_NIS, G_e; 							//thermal conductivity
 	
 	float Wt;								//transparency of barrier
 
