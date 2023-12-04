@@ -225,7 +225,7 @@ double PowerCoolInt(float DT, float v, float tau, float tauE, double *Ps)
 
 long CFoo::CEB_2eq_parallel_lite(void)
 {
-	FILE *f2, *f3, *f3old, *f4, *f5;					//IV 
+	FILE *f2, *f3, *f3old, *f4, *f5;					//Noise, Te, Te_old, NEP, G 
 	
 	int k,q,j,l,n;
 	
