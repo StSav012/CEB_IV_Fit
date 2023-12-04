@@ -44,7 +44,7 @@ double currentInt(float DT, float v, float tau, float tauE)
 	
 	double i, v1;
 	double a0, a1, a2; 
-	double x; //energy
+	double x;			//energy
 	float dx;
 	int l, inf;
 	float s;
@@ -54,8 +54,8 @@ double currentInt(float DT, float v, float tau, float tauE)
 	x = DT + dx;
 	v1 = abs(v);
 
-	double prev_i = 0;     // Previous 'i' value
-	double accuracy = 1e-6;  // Calculation accuracy
+	double prev_i = 0;		//previous 'i' value
+	double accuracy = 1e-6;		//calculation accuracy
 
 //#pragma omp parallel for default(shared) private(x, a0, a1, a2) reduction(+:i) num_threads(THREADS)
 	for (l = 0; l <= inf; l++)
@@ -66,7 +66,7 @@ double currentInt(float DT, float v, float tau, float tauE)
 		i += abs(x) / a2 * (a0 - a1);
 		x += dx;
 
-		// Accuracy check on every iteration
+		//accuracy check on every iteration
 		if (fabs(i - prev_i) < accuracy)
 			break;
 		prev_i = i;
@@ -82,7 +82,7 @@ double currentInt(float DT, float v, float tau, float tauE)
 		i += abs(x) / a2 * (a0 - a1);
 		x -= dx;
 	   
-		// Accuracy check on every iteration
+		//accuracy check on every iteration
 		if (fabs(i - prev_i) < accuracy)
 			break;
 		prev_i = i;
@@ -138,7 +138,7 @@ double AndCurrent(float DT, float v, float tauE, float Wt, float tm)
 	
 	double i, v1;
 	double a0, a1, a2; 
-	double x; //energy
+	double x;			//energy
 	float dx;
 	int l, inf;
 	//FILE *f9;
@@ -175,10 +175,10 @@ double PowerCoolInt(float DT, float v, float tau, float tauE, double *Ps)
 	double p, q;
 	double a, a1, a2;
 	double b, b1;
-	double x, dx, de;
+	double x, dx, de;		//energy
 	int l, inf;
-	double po;	//power   
-	FILE *f8;	//density of states
+	double po;			//power   
+	FILE *f8;			//density of states
    
 	po = 0;
 	*Ps = 0;
@@ -200,7 +200,7 @@ double PowerCoolInt(float DT, float v, float tau, float tauE, double *Ps)
 		a2 = 1 / (exp((x - v) / tauE) + 1);
 		a1 = 1 / (exp(x / tau) + 1);
 
-		po += abs(x) * (x - v) * (a2 - a1) / a;	//po += abs(x) * (x - v) / a * (a2 - a1);
+		po += abs(x) * (x - v) * (a2 - a1) / a;
 		*Ps += abs(x) * (x) * (a2 - a1) / a;
 		x += dx;
 	}
