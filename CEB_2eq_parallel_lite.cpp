@@ -245,7 +245,7 @@ long CFoo::CEB_2eq_parallel_lite(void)
 
 	float Z;								//heat exchange in normal metal in nW / (K^5 * micron^3)
 
-	double Delta, gamma;
+	double Delta, gamma;							//energy gap and gap smearing
 
 	double E, dE, E1;							//energy, eV
 
