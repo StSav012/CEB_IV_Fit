@@ -131,7 +131,7 @@ double PowerCool(float v, float tau, float tauE)
 }
 
 double AndCurrent(float DT, float v, float tauE, float Wt, float tm)
-{//computes the Andreev current using exact integral 
+{//computes the Andreev current using exact integral, rectangle method
 	//Wt - omega with ~ from Vasenko 2010
 	//dd - 1/tm, energy of pair breaking
 	/*'DT' is delta (energy gap), 'v' is voltage, 'tauE' is for electron temperature, 'Wt' is fortransparency of barrier, 'tm' is for depairing energy*/
@@ -168,7 +168,7 @@ double AndCurrent(float DT, float v, float tauE, float Wt, float tm)
 }
 
 double PowerCoolInt(float DT, float v, float tau, float tauE, double *Ps)
-{//integral of the cooling power of SIN junction 
+{//integral of the cooling power of SIN junction, rectangle method 
 	//E = x, V = v, T = tau, [x] = [v] = [tau]
 	/*'DT' is delta (energy gap), 'v' is voltage, 'tau' is for temperature, 'tauE' is for electron temperature, 'Ps' is for SIN cooling power*/
 	
