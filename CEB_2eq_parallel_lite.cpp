@@ -245,7 +245,7 @@ long CFoo::CEB_2eq_parallel_lite(void)
 
 	float Z;								//heat exchange in normal metal in nW / (K^5 * micron^3)
 
-	double Delta;
+	double Delta, gamma;
 
 	double E, dE, E1;							//energy, eV
 
