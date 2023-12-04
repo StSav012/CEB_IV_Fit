@@ -301,57 +301,57 @@ long CFoo::CEB_2eq_parallel_lite(void)
       
 // --------- known/guessed physical parameters
 
-	Pbg = par[0]; 			//incoming power for all structure, pW
+	Pbg = par[0]; 								//incoming power for all structure, pW
 
-	beta = par[1];			//returning power ratio, <1
+	beta = par[1];								//returning power ratio, <1
 
-	TephPOW = par[2];		//exponent for Te-ph
+	TephPOW = par[2];							//exponent for Te-ph
 
-	gamma = par[3];			//gap smearing, not used, should be 0
+	gamma = par[3];								//gap smearing, not used, should be 0
 
-	Vol = par[4];			//volume of absorber, um^3
+	Vol = par[4];								//volume of absorber, um^3
 
-	VolS = par[5];			//volume of superconductor, um^3
+	VolS = par[5];								//volume of superconductor, um^3
 
-	Z = par[6];			//heat exchange in normal metal, nW/(K^5*um^3)
+	Z = par[6];								//heat exchange in normal metal, nW/(K^5*um^3)
 
-	ZS = par[7];			//sigma
+	ZS = par[7];								//sigma
 
-	Tc = par[8];			//critical temperature, K
+	Tc = par[8];								//critical temperature, K
 
-	Rn = par[9] / M * MP;		//normal resistance for 1 bolometer, Ohm
+	Rn = par[9] / M * MP;							//normal resistance for 1 bolometer, Ohm
 
-	Rleak = par[10] / M * MP;	//leakage resistance for 1 bolometer, Ohm
+	Rleak = par[10] / M * MP;						//leakage resistance for 1 bolometer, Ohm
 
-	Wt = par[11];			//transparency of barrier
+	Wt = par[11];								//transparency of barrier
 
-	tm = par[12];			//depairing energy
+	tm = par[12];								//depairing energy
 
-	ii = par[13];			//coefficient for Andreev current
+	ii = par[13];								//coefficient for Andreev current
 
-	Ra = par[14];			//normal resistance for 1 absorber, Ohm
+	Ra = par[14];								//normal resistance for 1 absorber, Ohm
 
-	M = par[15];			//number of bolometers in series
+	M = par[15];								//number of bolometers in series
 
-	MP = par[16];			//number of bolometers in parallel
+	MP = par[16];								//number of bolometers in parallel
 
-	Tp = par[17];			//phonon temperature, K
+	Tp = par[17];								//phonon temperature, K
 
-	dVFinVg = par[18];		//voltage range end
+	dVFinVg = par[18];							//voltage range end
 
-	dVStartVg = par[19];		//voltage range start
+	dVStartVg = par[19];							//voltage range start
 
-	dV = par[20];			//voltage step, V
+	dV = par[20];								//voltage step, V
 
-	Te = Tp;			//electron temperature, is to be found, K
+	Te = Tp;								//electron temperature, is to be found, K
 
-	Ts = Tp;			//electron temperature in superconductor, K
+	Ts = Tp;								//electron temperature in superconductor, K
 	
-	//Ib = 1.4;			//bias current for electron cooling, nA
+	//Ib = 1.4;								//bias current for electron cooling, nA
 
-	dPbg = Pbg / M / MP;		//incoming power for 1 bolometer, pW
+	dPbg = Pbg / M / MP;							//incoming power for 1 bolometer, pW
 
-	Delta = 1.764 * Tc;		//in K, Vg[eV] = Tc * 1.764 * 86.25e-6
+	Delta = 1.764 * Tc;							//in K, Vg[eV] = Tc * 1.764 * 86.25e-6
 /*
  	char* cPbgNoise = new char[6];
 	_gcvt_s(cPbgNoise, sizeof(cPbgNoise), Pbg, 5);
@@ -400,7 +400,7 @@ long CFoo::CEB_2eq_parallel_lite(void)
 //---------- normalized constants
 
 	Rn = (Rn - Ra) / 2;
-	//Rleak=Rn/gamma;	//Ohm, is not needed if Gamma<>0
+	//Rleak=Rn/gamma;							//Ohm, is not needed if Gamma<>0
 
 	I0 = Delta / Rn * KBOL * 1e9;
 	
@@ -432,7 +432,7 @@ long CFoo::CEB_2eq_parallel_lite(void)
 		Vnum = new double[NV - 1];
 	
 	for (j = 0; j <= NV; j++) 
-		V[j] = Vstr + ((j - 0) * dV);	// = [V]
+		V[j] = Vstr + ((j - 0) * dV);					// = [V]
 
 	Tp0 = Tp;
 	
@@ -455,9 +455,9 @@ long CFoo::CEB_2eq_parallel_lite(void)
 
 	FILE* check=fopen("conv.txt", "w");
 	
-	for (j = 1; j <= NV - 1; j++)   //next voltage
+	for (j = 1; j <= NV - 1; j++)						//next voltage
 	{
-		for (n = 1; n <= 5; n++)   //next interation
+		for (n = 1; n <= 5; n++)					//next interation
 		{			
 			T1 = 0; 
 			
@@ -467,27 +467,27 @@ long CFoo::CEB_2eq_parallel_lite(void)
 			
 			DeltaT = sqrt(1 - pow(Ts / Tc, float(3.2))); 
 			
-			for (l = 1; l <= 15; l++) //next iteration
+			for (l = 1; l <= 15; l++)				//next iteration
 			{
 				tauE = (T1 + T2) / 2;
 					
-				I[j] = currentInt(DeltaT, V[j] / Vg, tau, tauE) * I0 + V[j] / Rleak * 1e9;	//in nA
+				I[j] = currentInt(DeltaT, V[j] / Vg, tau, tauE) * I0 + V[j] / Rleak * 1e9;						//in nA
 					
-				I_A[j] = ii * AndCurrent(DeltaT, V[j] / Vg, tauE, Wt, tm) * I0;	//in nA
+				I_A[j] = ii * AndCurrent(DeltaT, V[j] / Vg, tauE, Wt, tm) * I0;								//in nA
 					
-				Pe_p = Z * Vol * (pow(Tp, TephPOW/*7,6,5*/) - pow(tauE * Delta, TephPOW/*7,6,5*/)) * 1e3;	//pW
+				Pe_p = Z * Vol * (pow(Tp, TephPOW/*7,6,5*/) - pow(tauE * Delta, TephPOW/*7,6,5*/)) * 1e3;				//pW
 					
-				Pabs = I[j] * I[j] * Ra * 1e-6;	//pW
+				Pabs = I[j] * I[j] * Ra * 1e-6;												//pW
 					
-				Pleak = 2.0 * V[j] * V[j] / Rleak * 1e12;	// pW, 2 because of 2 SIN
+				Pleak = 2.0 * V[j] * V[j] / Rleak * 1e12;										// pW, 2 because of 2 SIN
 					
-				Pand = (I_A[j] * 1e-3) /*uA*/ * (I_A[j] * 1e-3) /*uA*/ * Ra /*Ohm*/ + 2.0 * (I_A[j] * 1e3) /*pA*/ * V[j] /*V*/;	//pW, absorber + Andreev
+				Pand = (I_A[j] * 1e-3) /*uA*/ * (I_A[j] * 1e-3) /*uA*/ * Ra /*Ohm*/ + 2.0 * (I_A[j] * 1e3) /*pA*/ * V[j] /*V*/;		//pW, absorber + Andreev
 					
-				Pcool = 1.0 * PowerCoolInt(DeltaT, V[j] / Vg, tau, tauE, &Ps) * Vg * Vg / Rn * 1e12;	//pW, 0.1 - experimental parameter
+				Pcool = 1.0 * PowerCoolInt(DeltaT, V[j] / Vg, tau, tauE, &Ps) * Vg * Vg / Rn * 1e12;					//pW, 0.1 - experimental parameter
 					
-				Ps = Ps * Vg * Vg / Rn * 1e12;	//returning power from S to N
+				Ps = Ps * Vg * Vg / Rn * 1e12;												//returning power from S to N
 					
-				Pheat = Pe_p + 1.0 * Pabs + 1.0 * Pand + dPbg + 2.0 * beta * Ps + 1.0 * Pleak;	// + Pand;
+				Pheat = Pe_p + 1.0 * Pabs + 1.0 * Pand + dPbg + 2.0 * beta * Ps + 1.0 * Pleak;						// + Pand;
 					
 				P = Pheat - 2.0 * Pcool;
 					
@@ -524,86 +524,84 @@ long CFoo::CEB_2eq_parallel_lite(void)
 		
 		Vnum[j - 1] = M * (2 * V[j] + ((I[j] + I_A[j]) * Ra * 1e-9));
 
-//----- NEP -------------------------------------
-//308mK_1.txt SampleC_200mK_48bolo.txt OL65_305mK_0.txt OL65 OPA111.txt OL76_304.txt
+//----- NEP ----------------------------------------------
 		
 		dT = 0.005;
 
-		vn = (3.2e-9) * sqrt(2.0);	//V/sqrt(Hz)	//for 2 amp * sqrt(2) AD745
-		in = (6.9e-15) * 1 / sqrt(2.0);	//A/sqrt(Hz)	//for 2 amp * 1 / sqrt(2)
+		vn = (3.2e-9) * sqrt(2.0);					//V/sqrt(Hz), for 2 amp * sqrt(2) AD745 amplifier
+		in = (6.9e-15) * 1 / sqrt(2.0);					//A/sqrt(Hz), for 2 amp * 1 / sqrt(2)
 
-//		vn = (8.0e-9) * sqrt(2.0);	//V/sqrt(Hz)	//for 2 amp * sqrt(2) OPA111
-//		in = (0.8e-15) * 1 / sqrt(2.0);	//A/sqrt(Hz)	//for 2 amp * 1 / sqrt(2)
+//		vn = (8.0e-9) * sqrt(2.0);					//V/sqrt(Hz), for 2 amp * sqrt(2) OPA111 amplifier
+//		in = (0.8e-15) * 1 / sqrt(2.0);					//A/sqrt(Hz), for 2 amp * 1 / sqrt(2)
 
-//		vn = (0.9e-9) * sqrt(2.0);	//V/sqrt(Hz)	//for 2 amp * sqrt(2) AD797
-//		in = (2.0e-12) * 1 / sqrt(2.0);	//A/sqrt(Hz)	//for 2 amp * 1 / sqrt(2)
+//		vn = (0.9e-9) * sqrt(2.0);					//V/sqrt(Hz), for 2 amp * sqrt(2) AD797 amplifier
+//		in = (2.0e-12) * 1 / sqrt(2.0);					//A/sqrt(Hz), for 2 amp * 1 / sqrt(2)
 
-//		vn = (1.1e-9) * sqrt(2.0);	//V/sqrt(Hz)	//for 2 amp * sqrt(2) IFN146
-//		in = (0.3e-15) * 1 / sqrt(2.0);	//A/sqrt(Hz)	//for 2 amp * 1 / sqrt(2)
+//		vn = (1.1e-9) * sqrt(2.0);					//V/sqrt(Hz), for 2 amp * sqrt(2) IFN146 amplifier
+//		in = (0.3e-15) * 1 / sqrt(2.0);					//A/sqrt(Hz), for 2 amp * 1 / sqrt(2)
 
-//		vn = (5.1e-9) * sqrt(2.0);	//V/sqrt(Hz)	//for 2 amp * sqrt(2) OPA1641
-//		in = (0.8e-15) * 1 / sqrt(2.0);	//A/sqrt(Hz)	//for 2 amp * 1 / sqrt(2)
+//		vn = (5.1e-9) * sqrt(2.0);					//V/sqrt(Hz), for 2 amp * sqrt(2) OPA1641 amplifier
+//		in = (0.8e-15) * 1 / sqrt(2.0);					//A/sqrt(Hz), for 2 amp * 1 / sqrt(2)
 
 		dPT = PowerCoolInt(DeltaT, V[j] / Vg, tau, tauE + dT / Delta, &Ps) - PowerCoolInt(DeltaT, V[j] / Vg, tau, tauE - dT / Delta, &Ps);
 		
-        	dPdT = Vg * Vg / Rn * 1e12 * (dPT) / (2 * dT);	//pW/K
+        	dPdT = Vg * Vg / Rn * 1e12 * (dPT) / (2 * dT);			//pW/K
 		
-	    	dIdT = I0 * (currentInt(DeltaT, V[j] / Vg, tau, tauE + dT / Delta) - currentInt(DeltaT, V[j] / Vg, tau, tauE - dT / Delta)) / (2 * dT);	//nA/K
+	    	dIdT = I0 * (currentInt(DeltaT, V[j] / Vg, tau, tauE + dT / Delta) - currentInt(DeltaT, V[j] / Vg, tau, tauE - dT / Delta)) / (2 * dT);			//nA/K
 		
 	    	dIdV = (I0 * (currentInt(DeltaT, V[j + 1] / Vg, tau, tauE) + ii * AndCurrent(DeltaT, V[j + 1] / Vg, tauE, Wt, tm) - currentInt(DeltaT, V[j - 1] / Vg, tau, tauE) - ii * AndCurrent(DeltaT, V[j - 1] / Vg, tauE, Wt, tm))) / (2 * dV);	//nA/V
 		
 	    	dPdV = Vg * Vg / Rn * 1e12 * (PowerCoolInt(DeltaT, V[j + 1] / Vg, tau, tauE, &Ps) - PowerCoolInt(DeltaT, V[j - 1] / Vg, tau, tauE, &Ps)) / (2 * dV);	//pW/V
 
-        	G_NIS = dPdT; G_e = 5 * Z * Vol * pow(Te, 4) * 1e3;	//pW/K
+        	G_NIS = dPdT; G_e = 5 * Z * Vol * pow(Te, 4) * 1e3;		//pW/K
 
-		G = G_e + 2 * (G_NIS - dIdT / dIdV * dPdV);	//pW/K (2)SINs		
+		G = G_e + 2 * (G_NIS - dIdT / dIdV * dPdV);			//pW/K, '2' for 2 SINs		
 	   
-	    	Sv = - 2 * dIdT / dIdV / G;	//V/pW  for 1 bolo
+	    	Sv = - 2 * dIdT / dIdV / G;					//V/pW, for 1 bolo
 
 		Sv = Sv / MP;
 		
-	    	NEPep = 10 * EL * KBOL * Z * Vol * (pow(Tp, TephPOW) + pow(Te, TephPOW)) * 1e3 * 1e12;	//^2 pW^2/Hz
+	    	NEPep = 10 * EL * KBOL * Z * Vol * (pow(Tp, TephPOW) + pow(Te, TephPOW)) * 1e3 * 1e12;		//^2 pW^2/Hz
 
-		NoiA = (vn * vn + pow(float(in * (2 * 1e9 / dIdV + Ra) * M / MP), float(2)));	//(V/sqrt(Hz))^2
+		NoiA = (vn * vn + pow(float(in * (2 * 1e9 / dIdV + Ra) * M / MP), float(2)));			//(V/sqrt(Hz))^2
 		
-		NEPa = (NoiA) / Sv / Sv;	//pW^2/Hz
+		NEPa = (NoiA) / Sv / Sv;					//pW^2/Hz
 
 //----- NEP SIN approximation ----------------------------
 
-		dI = 2 * EL * abs(I[j]) / pow(dIdV * Sv, 2) * 1e9;	//pW^2/Hz
+		dI = 2 * EL * abs(I[j]) / pow(dIdV * Sv, 2) * 1e9;		//pW^2/Hz
 		
-	    	dPdI = 2 * 2 * EL * Pcool / (dIdV * Sv) * 1e9;	//pW^2/Hz, second '2' is from comparison with integral
+	    	dPdI = 2 * 2 * EL * Pcool / (dIdV * Sv) * 1e9;			//pW^2/Hz, second '2' is from comparison with integral
 		
 		mm = log(sqrt(2 * PI * KBOL * Te * Vg) / (2 * abs(I[j]) * Rn * 1e-9));
 		
-	    	dP = (0.5 + mm * mm) * (KBOL * Te) * (KBOL * Te) * abs(I[j]) * EL * 1e-9 * 1e24;	//pW^2/Hz
+	    	dP = (0.5 + mm * mm) * (KBOL * Te) * (KBOL * Te) * abs(I[j]) * EL * 1e-9 * 1e24;		//pW^2/Hz
 		
-	    	NEPs = 2 * (dI - 2 * dPdI + dP);	//pW^2/Hz (2) //all terms positive
+	    	NEPs = 2 * (dI - 2 * dPdI + dP);				//pW^2/Hz, '2' for 2 SINs, all terms positive
 		
 		//fprintf(f5, "%g %g %g %g\n",  M * (2 * V[j] + I[j] * Ra * 1e-9), dI, 2 * dPdI, dP); 
 
-//----- NEP SIN integral ----------------------------
+//----- NEP SIN integral ---------------------------------
 /* 
 		mm = NEPInt(DeltaT, V[j] / Vg, tau, tauE, &dI, &dP, &dPdI);
 
-		dI = EL * I0 * dI / pow(dIdV * Sv, 2) * 1e9;	//pW^2/Hz
+		dI = EL * I0 * dI / pow(dIdV * Sv, 2) * 1e9;			//pW^2/Hz
   
 		dPdI = dPdI / (dIdV * Sv) * EL * Vg * Vg / Rn * 1e12 * 1e9;	//pW^2/Hz
   
-		dP = dP * Vg * Vg * Vg / Rn * EL * 1e24;	//pW^2/Hz 
+		dP = dP * Vg * Vg * Vg / Rn * EL * 1e24;			//pW^2/Hz 
         
-		NEPs = 2 * (dI - 2 * dPdI + dP);	//pW^2/Hz (2)  
+		NEPs = 2 * (dI - 2 * dPdI + dP);				//pW^2/Hz, '2' for 2 SINs, all terms positive
   
 		fprintf(f9, "%g %g %g %g\n",  M * (2 * V[j] + I[j] * Ra * 1e-9), dI, 2 * dPdI, dP);
 */
-//-----------------------------------------------
-//-----------------------------------------------
+//--------------------------------------------------------
 		
-		NEPph = sqrt(M * MP * 2 * Pbg * 0 * 1e9 * HPLANCK * 1e-12 + pow(M * MP * Pbg * 1e-12, 2) / 1e3 / 1e9);	//W/sqrt(Hz) at 0 GHz
+		NEPph = sqrt(M * MP * 2 * Pbg * 0 * 1e9 * HPLANCK * 1e-12 + pow(M * MP * Pbg * 1e-12, 2) / 1e3 / 1e9);		//W/sqrt(Hz), at 0 GHz
 		
-		//NEPph = sqrt(M * MP * 2 * Pbg * 350 * 1e9 * HPLANCK * 1e-12 + pow(M * MP * Pbg * 1e-12, 2) / 1.552 / 1e9);	//W/sqrt(Hz) at 350 GHz
+		//NEPph = sqrt(M * MP * 2 * Pbg * 350 * 1e9 * HPLANCK * 1e-12 + pow(M * MP * Pbg * 1e-12, 2) / 1.552 / 1e9);	//W/sqrt(Hz), at 350 GHz
 		
-		NEPph = NEPph * 1e12;	//pW
+		NEPph = NEPph * 1e12;						//pW
 
 		NEP = sqrt(M * MP * (NEPep + NEPs) + NEPa + NEPph * NEPph);	//all squares 
 
