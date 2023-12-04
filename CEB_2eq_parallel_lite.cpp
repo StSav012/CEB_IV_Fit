@@ -39,7 +39,7 @@ double current(float v, float tau)
 }
 
 double currentInt(float DT, float v, float tau, float tauE)
-{//computes the current using exact integral 
+{//computes the current using exact integral, rectangle method 
 	/*'DT' is delta (energy gap), 'v' is voltage, 'tau' is for temperature, 'tauE' is for electron temperature*/
 	
 	double i, v1;
