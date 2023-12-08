@@ -1,10 +1,21 @@
-#include <cmath>
+#ifndef _MINS_H_
+#define _MINS_H_
 
-#include "nrutil_nr.h"
+#include <cmath>
+#include <cstdio>
+#include <ctime>
+
+template<class T>
+inline const T sign(const T &a, const T &b)
+{
+    /*Return `a` of the same sign as `b`.*/
+    return ((a >= 0) == (b >= 0)) ? a : -a;
+}
 
 struct Bracketmethod
 {
     double ax, bx, cx, fa, fb, fc;
+
     template<class T>
     void bracket(const double a, const double b, T &func)
     {
@@ -25,7 +36,7 @@ struct Bracketmethod
             double q = (bx - cx) * (fb - fa);
             double u = bx
                        - ((bx - cx) * q - (bx - ax) * r)
-                             / (2.0 * SIGN(std::max(std::abs(q - r), TINY), q - r));
+                             / (2.0 * sign(std::max(std::abs(q - r), TINY), q - r));
             double ulim = bx + GLIMIT * (cx - bx);
             if ((bx - u) * (u - cx) > 0.0) {
                 fu = func(u);
@@ -59,17 +70,20 @@ struct Bracketmethod
             shft3(fa, fb, fc, fu);
         }
     }
+
     inline void shft2(double &a, double &b, const double c)
     {
         a = b;
         b = c;
     }
+
     inline void shft3(double &a, double &b, double &c, const double d)
     {
         a = b;
         b = c;
         c = d;
     }
+
     inline void mov3(double &a, double &b, double &c, const double d, const double e, const double f)
     {
         a = d;
@@ -82,9 +96,11 @@ struct Golden : Bracketmethod
 {
     double xmin, fmin;
     const double tol;
+
     Golden(const double toll = 3.0e-8)
         : tol(toll)
     {}
+
     template<class T>
     double minimize(T &func)
     {
@@ -139,9 +155,11 @@ struct Brent : Bracketmethod
 {
     double xmin, fmin;
     const double tol;
+
     Brent(const double toll = 3.0e-8)
         : tol(toll)
     {}
+
     template<class T>
     double minimize(T &func)
     {
@@ -181,12 +199,12 @@ struct Brent : Bracketmethod
                     d = p / q;
                     u = x + d;
                     if (u - a < tol2 || b - u < tol2)
-                        d = SIGN(tol1, xm - x);
+                        d = sign(tol1, xm - x);
                 }
             } else {
                 d = CGOLD * (e = (x >= xm ? a - x : b - x));
             }
-            u = (std::abs(d) >= tol1 ? x + d : x + SIGN(tol1, d));
+            u = (std::abs(d) >= tol1 ? x + d : x + sign(tol1, d));
             fu = func(u);
             if (fu <= fx) {
                 if (u >= x)
@@ -224,9 +242,11 @@ struct Dbrent : Bracketmethod
 {
     double xmin, fmin;
     const double tol;
+
     Dbrent(const double toll = 3.0e-8)
         : tol(toll)
     {}
+
     template<class T>
     double minimize(T &funcd)
     {
@@ -272,7 +292,7 @@ struct Dbrent : Bracketmethod
                     if (std::abs(d) <= std::abs(0.5 * olde)) {
                         u = x + d;
                         if (u - a < tol2 || b - u < tol2)
-                            d = SIGN(tol1, xm - x);
+                            d = sign(tol1, xm - x);
                     } else {
                         d = 0.5 * (e = (dx >= 0.0 ? a - x : b - x));
                     }
@@ -286,7 +306,7 @@ struct Dbrent : Bracketmethod
                 u = x + d;
                 fu = funcd(u);
             } else {
-                u = x + SIGN(tol1, d);
+                u = x + sign(tol1, d);
                 fu = funcd(u);
                 if (fu > fx) {
                     fmin = fx;
@@ -318,3 +338,5 @@ struct Dbrent : Bracketmethod
         throw("Too many iterations in routine dbrent");
     }
 };
+
+#endif
