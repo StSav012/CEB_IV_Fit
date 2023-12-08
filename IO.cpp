@@ -55,10 +55,6 @@ long GetExp(char* fname, int iNumCols, int iColNum, double *&Iexp, double *&Vexp
 		double dOffset=0;
 		double dLBound=-0.0005;
 		double dRBound=0.0005;
-		for (long i=0; i<count; i++)
-		{
-			Vexp[i]=Vexp[i];
-		}
 		COff Off(Iexp, Vexp, count);
 		Golden broff;
 		broff.ax=dLBound;
