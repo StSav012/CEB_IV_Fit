@@ -1,4 +1,11 @@
-#include "classfuncs.h"
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
+#include <limits>
+
+#include "cfoo.h"
 
 int main()
 {
