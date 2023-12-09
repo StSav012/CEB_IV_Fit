@@ -1,8 +1,6 @@
 #include <cmath>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
 #include <ctime>
+#include <iostream>
 #include <limits>
 
 #include "cfoo.h"
@@ -11,16 +9,15 @@ int main()
 {
     //brent.bracket(0.0, dPbgPB, foo);
     //GetDBStartPoint(par, "DB_300mK.txt");
-    clock_t begin = clock();
+    time_t begin = time(NULL);
     CFoo foo(0);
 
     foo.SeqFit(3);
-    printf("\nFinished.");
-    clock_t end = clock();
-    double time_spent = (double) (end - begin) / CLOCKS_PER_SEC;
-    printf("\n%f", time_spent);
+    std::clog << '\n' << "Finished." << std::endl;
+    time_t end = time(NULL);
+    double time_spent = difftime(end, begin);
+    std::clog << '\n' << "spent " << time_spent << " seconds" << std::endl;
 
-    double tmp = 0;
-    scanf("%lf", &tmp);
+    std::getchar();
     return 0;
 }
