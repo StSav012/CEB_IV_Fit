@@ -4,23 +4,24 @@
 //for bolometers (absorber + 2SINs) w/ Andreev Current
 
 #include <cmath>
-#include <cstdio>
 #include <ctime>
+#include <tuple>
 
 #include "constants.h"
 
-double current(float v, float tau)
+/*
+ * Never used
+ * 
+double current(double v, double tau)
 {
-    /*
      * Compute the current using approximation [delta(0) / eRn]
      * 
      * `v` is voltage,
      * `tau` is for temperature
-    */
 
     double i; // [delta(0) / eRn]
     double a0, a1, a2, a3;
-    float s;
+    double s;
 
     a0 = 1 + 0.375 * tau - 0.1171875 * tau * tau;
     a1 = tau * a0 * a0;
@@ -32,12 +33,13 @@ double current(float v, float tau)
     else
         s = -1;
 
-    i = s * std::sqrt(2 * PI * a1 / a2 + a3)
+    i = s * std::sqrt(2 * M_PI * a1 / a2 + a3)
         * (1 / (2 * std::exp((1 - v) / tau) + 1) + 1 / (2 * std::exp((1 + v) / tau) + 1));
     return i;
 }
+*/
 
-double currentInt(float DT, float v, float tau, float tauE)
+double currentInt(const double DT, const double v, const double tau, double const tauE)
 {
     /* 
      * Compute the current using exact integral, rectangle method
@@ -48,58 +50,71 @@ double currentInt(float DT, float v, float tau, float tauE)
      * `tauE` is for electron temperature
     */
 
-    double i, v1;
+    const double dx = INTEGRATION_SCALE * DT;
+    const double inf = ESSENTIALLY_INFINITY_SCALE * DT;
+    const double accuracy = 1e-6; // calculation accuracy
+    const double DT2 = std::pow(DT, 2);
+    const double v1 = std::abs(v);
+
     double a0, a1, a2;
-    double x; //energy
-    float dx;
-    int l, inf;
-    float s;
-    dx = 0.2e-3;
-    inf = (int) (20 / dx);
-    i = 0;
-    x = DT + dx;
-    v1 = std::abs(v);
+    double i_step;
+    double pos_i = 0, neg_i = 0;
 
-    double prev_i = 0;      //previous 'i' value
-    double accuracy = 1e-6; //calculation accuracy
+    double x = DT; // energy
+    while (x <= inf) {
+        a2 = std::sqrt(std::pow(x, 2) - DT2);
 
-    //#pragma omp parallel for default(shared) private(x, a0, a1, a2) reduction(+:i) num_threads(THREADS)
-    for (l = 0; l <= inf; l++) {
-        a0 = 1 / (std::exp((x - v1) / tauE) + 1);
-        a1 = 1 / (std::exp(x / tau) + 1);
-        a2 = std::sqrt(x * x - DT * DT);
-        i += std::abs(x) / a2 * (a0 - a1);
+        a0 = 1.0 / (std::exp((x - v1) / tauE) + 1);
+        a1 = 1.0 / (std::exp(x / tau) + 1);
+        i_step = x / a2 * (a0 - a1);
+        //accuracy check at every iteration
+        if (std::abs(i_step) < accuracy)
+            break;
+        pos_i += i_step;
+
+        a0 = 1.0 / (std::exp((-x - v1) / tauE) + 1);
+        a1 = 1.0 / (std::exp(-x / tau) + 1);
+        i_step = x / a2 * (a0 - a1);
+        // accuracy check at every iteration
+        if (std::abs(i_step) < accuracy)
+            break;
+        neg_i += i_step;
+
         x += dx;
-
-        //accuracy check on every iteration
-        if (std::abs(i - prev_i) < accuracy)
-            break;
-        prev_i = i;
     }
-    x = -DT - dx;
 
-    //#pragma omp parallel for default(shared) private(x, a0, a1, a2) reduction(+:i) num_threads(THREADS)
-    for (l = 0; l <= inf; l++) {
-        a0 = 1 / (std::exp((x - v1) / tauE) + 1);
-        a1 = 1 / (std::exp(x / tau) + 1);
-        a2 = std::sqrt(x * x - DT * DT);
-        i += std::abs(x) / a2 * (a0 - a1);
-        x -= dx;
-
-        //accuracy check on every iteration
-        if (std::abs(i - prev_i) < accuracy)
-            break;
-        prev_i = i;
-    }
+    double s;
     if (v > 0)
         s = 1;
     else
         s = -1;
-    i *= dx * s;
-    return i;
+
+    return (pos_i + neg_i) * dx * s;
 }
 
-double PowerCool(float v, float tau, float tauE)
+inline double PowerCoolPiece(const double v, const double tau)
+{
+    /*
+     * A part of `PowerCool`
+     */
+    const double a0 = (1 - v) / tau;
+    const double tmp1 = 2.0 * std::exp(a0);
+    const double tmp2 = std::exp(2.5 * (a0 + 2));
+    const double PItau = M_PI * tau;
+    const double a1 = std::sqrt(2.0 * PItau) * ((1 - v) / (tmp1 + 1.28) + 0.5 * tau / (tmp1 + 0.64))
+                      / (1.0 / tmp2 + 1.0);
+    double a3;
+    if (v && (v - 1 - tau) > 0) {
+        const double a2 = std::sqrt(std::pow(v, 2) - 1.0);
+        a3 = 0.5 * (-v * a2 + std::log(v + a2) + std::pow(PItau, 2) / 3.0 * v / a2) / (tmp2 + 1.0);
+    } else {
+        a3 = 0.0;
+    }
+
+    return a1 + a3;
+}
+
+double PowerCool(const double v, const double tau, const double tauE)
 {
     /*
      * Compute the cooling power of a SIN junction
@@ -107,47 +122,17 @@ double PowerCool(float v, float tau, float tauE)
      * `v` is voltage, 
      * `tau` is for temperature,
      * `tauE` is for electron temperature
-    */
+     */
 
-    double p;
-    double a0, a1, a2, a3;
-    double b0, b1, b2, b3;
-    double c0, c1;
+    double a1 = PowerCoolPiece(v, tauE);
+    double b1 = PowerCoolPiece(-v, tauE);
+    double c1 = PowerCoolPiece(0.0, tau);
 
-    a3 = 0;
-    b3 = 0;
-    v = std::abs(v);
-
-    a0 = (1 - v) / tauE;
-    a1 = std::sqrt(2 * PI * tauE)
-         * ((1 - v) / (2 * std::exp(a0) + 1.28) + 0.5 * tauE / (2 * std::exp(a0) + 0.64))
-         / (std::exp(-2.5 * (a0 + 2)) + 1);
-    if ((v - 1 - tauE) > 0) {
-        a2 = std::sqrt(v * v - 1);
-        a3 = 0.5 * (-v * a2 + std::log(v + a2) + PI * PI * tauE * tauE / 3 * v / a2)
-             / (std::exp(2.5 * (a0 + 2)) + 1);
-    }
-
-    b0 = (1 + v) / tauE;
-    b1 = std::sqrt(2 * PI * tauE)
-         * ((1 + v) / (2 * std::exp(b0) + 1.28) + 0.5 * tauE / (2 * std::exp(b0) + 0.64))
-         / (std::exp(-2.5 * (b0 + 2)) + 1);
-    if ((-v - 1 - tauE) > 0) {
-        b2 = sqrt(v * v - 1);
-        b3 = 0.5 * (v * b2 + std::log(-v + b2) - PI * PI * tauE * tauE / 3 * v / b2)
-             / (std::exp(2.5 * (b0 + 2)) + 1);
-    }
-
-    c0 = 1 / tau;
-    c1 = 2 * std::sqrt(2 * PI * tau)
-         * (1 / (2 * std::exp(c0) + 1.28) + 0.5 * tau / (2 * std::exp(c0) + 0.64))
-         / (std::exp(-2.5 * (c0 + 2)) + 1);
-
-    p = (a1 + a3 + b1 + b3 - c1);
-    return p;
+    return a1 + b1 - c1;
 }
 
-double AndCurrent(float DT, float v, float tauE, float Wt, float tm)
+double AndCurrent(
+    const double DT, const double v, const double tauE, const double Wt, const double tm)
 {
     /*
      * Compute the Andreev current using exact integral, rectangle method
@@ -157,31 +142,27 @@ double AndCurrent(float DT, float v, float tauE, float Wt, float tm)
      * `tauE` is for electron temperature,
      * `Wt` is omega with ~ from Vasenko 2010, for the transparency of the barrier,
      * `tm` is for the depairing energy
-    */
+     */
 
-    double i, v1;
-    double a0, a1, a2;
-    double x; //energy
-    float dx;
-    int l, inf;
-    //FILE *f9;
+    const double dx = INTEGRATION_SCALE * DT;
+    const double DT2 = std::pow(DT, 2);
+    const double twoWt = 2.0 * Wt;
+    const double twoTauE = 2.0 * tauE;
 
-    dx = 0.2e-3;
-    inf = (int) (DT / dx) - 1;
+    double i = 0.0;
 
-    i = 0;
-    x = dx;
+    //FILE *f9=fopen("SINi.dat","w");
 
-    //f9=fopen("SINi.dat","w");
-
-    //#pragma omp parallel for default(shared) private(a0, a1, a2) reduction(+:i) num_threads(THREADS)
-    for (l = 0; l <= inf - 1; l++) {
-        a0 = std::tanh((x + v) / (2 * tauE));
-        a1 = std::tanh((x - v) / (2 * tauE));
-        a2 = 2 * Wt * std::sqrt(DT * DT - x * x) / tm
-             / (std::pow(2 * Wt * x - x * std::sqrt(DT * DT - x * x) / DT, 2)
-                + (DT * DT - x * x) / std::pow(DT * tm, 2));
-        i += DT / std::sqrt(DT * DT - x * x) * (a0 - a1) * a2;
+    double da0a1, a2;
+    double DT2x2, sqrtDT2x2;
+    double x = 0.0; //energy
+    while (x <= DT) {
+        DT2x2 = DT2 - std::pow(x, 2);
+        sqrtDT2x2 = std::sqrt(DT2x2);
+        da0a1 = std::tanh((x + v) / twoTauE) - std::tanh((x - v) / twoTauE);
+        a2 = twoWt * sqrtDT2x2 / tm
+             / (std::pow(x * (twoWt - sqrtDT2x2 / DT), 2) + DT2x2 / std::pow(DT * tm, 2));
+        i += DT / sqrtDT2x2 * da0a1 * a2;
         //fprintf(f9,"%g %g\n", x, i);
         x += dx;
     }
@@ -190,7 +171,7 @@ double AndCurrent(float DT, float v, float tauE, float Wt, float tm)
     //fclose(f9);
 }
 
-double PowerCoolInt(float DT, float v, float tau, float tauE, double *Ps)
+auto PowerCoolInt(const double DT, const double v, const double tau, const double tauE)
 {
     /*
      * Compute the integral of the cooling power of SIN junction, rectangle method
@@ -198,57 +179,39 @@ double PowerCoolInt(float DT, float v, float tau, float tauE, double *Ps)
      * `DT` is delta (energy gap),
      * `v` is voltage,
      * `tau` is for temperature,
-     * `tauE` is for electron temperature,
-     * `Ps` is for SIN cooling power
-    */
+     * `tauE` is for electron temperature
+     */
 
     //E = x, V = v, T = tau, [x] = [v] = [tau]
 
-    double p, q;
-    double a, a1, a2;
-    double b, b1;
-    double x, dx, de; //energy
-    int l, inf;
-    double po; //power
-    FILE *f8;  //density of states
+    const double dx = INTEGRATION_SCALE * DT;
+    const double inf = ESSENTIALLY_INFINITY_SCALE * DT;
+    const double v1 = std::abs(v);
+    const double DT2 = std::pow(DT, 2);
 
-    po = 0;
-    *Ps = 0;
-    v = std::abs(v);
+    double po = 0.0; // power
+    double ps = 0.0; // SIN cooling power
 
-    dx = 2e-4;
-    inf = (int) (20 / dx);
+    //FILE *f8 = fopen("DOS.txt","w");  //density of states
 
-    //f8 = fopen("DOS.txt","w");
+    double x = DT; // energy
+    double a, da2a1;
+    double x2;
+    while (x <= inf) {
+        x2 = std::pow(x, 2);
+        a = std::sqrt(x2 - DT2);
 
-    de = DT;
-    x = de + dx;
+        da2a1 = (1.0 / (std::exp((x - v1) / tauE) + 1.0) - 1.0 / (std::exp(x / tau) + 1.0)) / a;
+        po += x * (x - v1) * da2a1;
+        ps += x2 * da2a1;
 
-    //#pragma omp parallel for default(shared) private(x, a, a1, a2) reduction(+:po) num_threads(THREADS)
-    for (l = 0; l <= inf; l++) {
-        a = std::sqrt(x * x - DT * DT);
+        da2a1 = (1.0 / (std::exp((-x - v1) / tauE) + 1.0) - 1.0 / (std::exp(-x / tau) + 1.0)) / a;
+        po += x * (-x - v1) * da2a1;
+        ps += -x2 * da2a1;
 
-        a2 = 1 / (std::exp((x - v) / tauE) + 1);
-        a1 = 1 / (std::exp(x / tau) + 1);
-
-        po += std::abs(x) * (x - v) * (a2 - a1) / a;
-        *Ps += std::abs(x) * (x) * (a2 - a1) / a;
         x += dx;
     }
-    x = -de - dx;
-
-    //#pragma omp parallel for default(shared) private(x, a, a1, a2) reduction(+:po) num_threads(THREADS)
-    for (l = 0; l <= inf; l++) {
-        a = std::sqrt(x * x - DT * DT);
-
-        a2 = 1 / (std::exp((x - v) / tauE) + 1);
-        a1 = 1 / (std::exp(x / tau) + 1);
-
-        po += std::abs(x) * (x - v) * (a2 - a1) / a;
-        *Ps += std::abs(x) * x * (a2 - a1) / a;
-        x -= dx;
-    }
     po *= dx;
-    *Ps *= dx;
-    return po;
+    ps *= dx;
+    return std::make_tuple(po, ps);
 }

@@ -2,22 +2,27 @@
 #define _MINS_H_
 
 #include <cmath>
-#include <cstdio>
 #include <ctime>
+#include <fstream>
+#include <functional>
+#include <iostream>
 
-template<class T>
-inline const T sign(const T &a, const T &b)
+inline void writeConverg(double x, double f, clock_t start)
 {
-    /*Return `a` of the same sign as `b`.*/
-    return ((a >= 0) == (b >= 0)) ? a : -a;
+    std::clog << '\n' << "CURRENT XMIN = " << x << '\t' << "CHISQMIN = " << f << std::endl;
+
+    std::ofstream conv;
+    conv.open("converg.txt", std::ofstream::app);
+    conv << x << f << (double) (clock() - start) / CLOCKS_PER_SEC << std::endl;
+    conv.close();
+    return;
 }
 
 struct Bracketmethod
 {
     double ax, bx, cx, fa, fb, fc;
 
-    template<class T>
-    void bracket(const double a, const double b, T &func)
+    void bracket(const double a, const double b, std::function<double(double)> &func)
     {
         const double GOLD = 1.618034, GLIMIT = 100.0, TINY = 1.0e-20;
         ax = a;
@@ -36,7 +41,7 @@ struct Bracketmethod
             double q = (bx - cx) * (fb - fa);
             double u = bx
                        - ((bx - cx) * q - (bx - ax) * r)
-                             / (2.0 * sign(std::max(std::abs(q - r), TINY), q - r));
+                             / (2.0 * std::copysign(std::max(std::abs(q - r), TINY), q - r));
             double ulim = bx + GLIMIT * (cx - bx);
             if ((bx - u) * (u - cx) > 0.0) {
                 fu = func(u);
@@ -99,13 +104,13 @@ struct Golden : Bracketmethod
 
     Golden(const double toll = 3.0e-8)
         : tol(toll)
+        , fmin(NAN)
     {}
 
     template<class T>
     double minimize(T &func)
     {
-        clock_t start, finish;
-        start = clock();
+        clock_t start = clock();
         const double R = 0.61803399, C = 1.0 - R;
         double x1, x2;
         double x0 = ax;
@@ -123,20 +128,12 @@ struct Golden : Bracketmethod
             if (f2 < f1) {
                 shft3(x0, x1, x2, R * x2 + C * x3);
                 shft2(f1, f2, func(x2));
-                finish = clock();
-                printf("\nCURRENT XMIN:%lf CHISQMIN: %e\n", x2, f2);
-                FILE *conv = fopen("converg.txt", "a");
-                fprintf(conv, "%lf %e %lf\n", x2, f2, (double) (finish - start) / CLOCKS_PER_SEC);
-                fclose(conv);
+                writeConverg(x2, f2, start);
                 //getch();
             } else {
                 shft3(x3, x2, x1, R * x1 + C * x0);
                 shft2(f2, f1, func(x1));
-                finish = clock();
-                printf("\nCURRENT XMIN:%lf CHISQMIN: %e\n", x1, f1);
-                FILE *conv = fopen("converg.txt", "a");
-                fprintf(conv, "%lf %e %lf\n", x1, f1, (double) (finish - start) / CLOCKS_PER_SEC);
-                fclose(conv);
+                writeConverg(x1, f1, start);
                 //getch();
             }
         }
@@ -174,7 +171,7 @@ struct Brent : Bracketmethod
         b = (ax > cx ? ax : cx);
         x = w = v = bx;
         fw = fv = fx = func(x);
-        clock_t start, finish;
+        clock_t start;
         start = clock();
         for (int iter = 0; iter < ITMAX; iter++) {
             xm = 0.5 * (a + b);
@@ -199,12 +196,12 @@ struct Brent : Bracketmethod
                     d = p / q;
                     u = x + d;
                     if (u - a < tol2 || b - u < tol2)
-                        d = sign(tol1, xm - x);
+                        d = std::copysign(tol1, xm - x);
                 }
             } else {
                 d = CGOLD * (e = (x >= xm ? a - x : b - x));
             }
-            u = (std::abs(d) >= tol1 ? x + d : x + sign(tol1, d));
+            u = (std::abs(d) >= tol1 ? x + d : x + std::copysign(tol1, d));
             fu = func(u);
             if (fu <= fx) {
                 if (u >= x)
@@ -228,11 +225,7 @@ struct Brent : Bracketmethod
                     fv = fu;
                 }
             }
-            finish = clock();
-            printf("\nCURRENT XMIN:%lf CHISQMIN: %e\n", x, fx);
-            FILE *conv = fopen("converg.txt", "a");
-            fprintf(conv, "%lf %e %lf\n", x, fx, (double) (finish - start) / CLOCKS_PER_SEC);
-            fclose(conv);
+            writeConverg(x, fx, start);
         }
         throw("Too many iterations in brent");
     }
@@ -292,7 +285,7 @@ struct Dbrent : Bracketmethod
                     if (std::abs(d) <= std::abs(0.5 * olde)) {
                         u = x + d;
                         if (u - a < tol2 || b - u < tol2)
-                            d = sign(tol1, xm - x);
+                            d = std::copysign(tol1, xm - x);
                     } else {
                         d = 0.5 * (e = (dx >= 0.0 ? a - x : b - x));
                     }
@@ -306,7 +299,7 @@ struct Dbrent : Bracketmethod
                 u = x + d;
                 fu = funcd(u);
             } else {
-                u = x + sign(tol1, d);
+                u = x + std::copysign(tol1, d);
                 fu = funcd(u);
                 if (fu > fx) {
                     fmin = fx;
