@@ -352,8 +352,9 @@ size_t CFoo::CEB_2eq_parallel_lite() {
         NEPep = 10.0 * E * K * Z * Vol * (std::pow(Tp, TephPOW) + std::pow(Te, TephPOW)) * 1e3
                 * 1e12; //^2 [pW²/Hz]
 
-        NoiA = std::pow(vn, 2)
-               + std::pow(in * (2.0 * 1e9 / dIdV + Ra) * bolometersInSeries / bolometersInParallel, 2); // [V²/Hz]
+        NoiA = std::pow(VOLTAGE_NOISE_2_AMPS, 2)
+               + std::pow(CURRENT_NOISE_2_AMPS * (2.0 * 1e9 / dIdV + Ra) * bolometersInSeries / bolometersInParallel,
+                          2); // [V²/Hz]
 
         NEPa = NoiA / std::pow(Sv, 2); // [pW²/Hz]
 

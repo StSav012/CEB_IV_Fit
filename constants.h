@@ -55,19 +55,39 @@ constexpr double ESSENTIALLY_INFINITY_SCALE = 20.0;
 /* 
  *  Voltage and current noise for some amplifiers
  */
-constexpr double vn = (3.2e-9) * M_SQRT2; //V/sqrt(Hz), for 2 amp * sqrt(2) AD745 amplifier
-constexpr double in = (6.9e-15) * M_SQRT1_2; //A/sqrt(Hz), for 2 amp / sqrt(2)
+#define AD745 745
+#define OPA111 111
+#define AD797 797
+#define IFN146 146
+#define OPA1641 1641
+#define AMPLIFIER AD745
+#ifndef AMPLIFIER
+#   error "Undefined amplifier"
+#elif AMPLIFIER == AD745
+constexpr double VOLTAGE_NOISE = 3.2e-9; // [V/sqrt(Hz)]
+constexpr double CURRENT_NOISE = 6.9e-15; // [A/sqrt(Hz)]
+#elif AMPLIFIER == OPA111
+constexpr double VOLTAGE_NOISE = 8.0e-9; // [V/sqrt(Hz)]
+constexpr double CURRENT_NOISE = 0.8e-15; // [A/sqrt(Hz)]
+#elif AMPLIFIER == AD797
+constexpr double VOLTAGE_NOISE = 0.9e-9; // [V/sqrt(Hz)]
+constexpr double CURRENT_NOISE = 2000.0e-15; // [A/sqrt(Hz)]
+#elif AMPLIFIER == IFN146
+constexpr double VOLTAGE_NOISE = 1.1e-9; // [V/sqrt(Hz)]
+constexpr double CURRENT_NOISE = 0.3e-15; // [A/sqrt(Hz)]
+#elif AMPLIFIER == OPA1641
+constexpr double VOLTAGE_NOISE = 5.1e-9; // [V/sqrt(Hz)]
+constexpr double CURRENT_NOISE = 0.8e-15; // [A/sqrt(Hz)]
+#else
+#   error "Unknown amplifier"
+#endif
+#undef AD745
+#undef OPA111
+#undef AD797
+#undef IFN146
+#undef OPA1641
 
-//		vn = (8.0e-9) * M_SQRT2;					//V/sqrt(Hz), for 2 amp * sqrt(2) OPA111 amplifier
-//		in = (0.8e-15) * M_SQRT1_2;					//A/sqrt(Hz), for 2 amp / sqrt(2)
-
-//		vn = (0.9e-9) * M_SQRT2;					//V/sqrt(Hz), for 2 amp * sqrt(2) AD797 amplifier
-//		in = (2.0e-12) * M_SQRT1_2;					//A/sqrt(Hz), for 2 amp / sqrt(2)
-
-//		vn = (1.1e-9) * M_SQRT2;					//V/sqrt(Hz), for 2 amp * sqrt(2) IFN146 amplifier
-//		in = (0.3e-15) * M_SQRT1_2;					//A/sqrt(Hz), for 2 amp / sqrt(2)
-
-//		vn = (5.1e-9) * M_SQRT2;					//V/sqrt(Hz), for 2 amp * sqrt(2) OPA1641 amplifier
-//		in = (0.8e-15) * M_SQRT1_2;					//A/sqrt(Hz), for 2 amp / sqrt(2)
+constexpr double VOLTAGE_NOISE_2_AMPS = VOLTAGE_NOISE * M_SQRT2; // for 2 amp, × sqrt(2)
+constexpr double CURRENT_NOISE_2_AMPS = CURRENT_NOISE * M_SQRT1_2; // for 2 amp, / sqrt(2)
 
 #endif
