@@ -64,8 +64,6 @@ void CFoo::SeqFit(size_t iRunCount) {
      *  Fit using Golden method
      */
 
-    Golden method(1e-3);
-
     std::random_device r;
     std::default_random_engine generator(r());
 
@@ -86,21 +84,21 @@ void CFoo::SeqFit(size_t iRunCount) {
             }
         }
 
+        double fmin;
         for (int j = 0; j < iNumParams; ++j)
             if (ToFit[ParSeq[j]]) {
                 iParNum = ParSeq[j];
-                method.ax = 0.5 * par[iParNum];
-                method.bx = 1.0 * par[iParNum];
-                method.cx = 2.0 * par[iParNum];
-                //printf("Bracketed at: %lf %lf %lf", brent.ax, brent.bx, brent.cx);
-                //scanf("%lf", &tmp);
-
-                par[iParNum] = method.minimize(*this);
+                std::tie(par[iParNum], fmin) = GoldenMinimize(
+                    *this,
+                    0.5 * par[iParNum], 2.0 * par[iParNum],
+                    1.0 * par[iParNum],
+                    1e-3
+                );
             }
         if (std::fstream params("fitparameters_new.txt", std::fstream::app); params) {
             for (const auto p: par)
                 params << p << SEP;
-            params << method.fmin << std::endl;
+            params << fmin << std::endl;
             params.close();
         }
     }
