@@ -1,14 +1,14 @@
-#ifndef _COOF_H_
-#define _COOF_H_
+#ifndef COOF_H
+#define COOF_H
 
 #include <valarray>
 
-class COff
-{
+class COff {
     std::valarray<double> Iofx, Vofx, Iref, Vref;
 
 public:
-    COff(const std::valarray<double> &Iexp, const std::valarray<double> &Vexp);
+    COff(const std::valarray<double>& Iexp, const std::valarray<double>& Vexp);
+
     double operator()(double dOffset);
 };
 
