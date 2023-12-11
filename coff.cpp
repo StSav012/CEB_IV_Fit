@@ -1,23 +1,23 @@
 #include <cmath>
+#include <stdexcept>
 
-#include "coff.h"
 #include "utils.h"
 
-COff::COff(const std::valarray<double> &Iexp, const std::valarray<double> &Vexp)
-{
+#include "coff.h"
+
+COff::COff(const std::valarray<double>& Iexp, const std::valarray<double>& Vexp) {
     if (Iexp.size() != Vexp.size()) {
-        throw("I and V must be of the same size");
+        throw std::length_error("I and V must be of the same size");
     }
 
-    size_t count = Iexp.size();
+    const size_t count = Iexp.size();
     Iofx.resize(count);
     Vofx.resize(count);
     Iref = Iexp;
     Vref = Vexp;
 }
 
-double COff::operator()(double dOffset)
-{
+double COff::operator()(const double dOffset) {
     /*
      *  Make an object of the class act like a callable
      *  
@@ -27,7 +27,7 @@ double COff::operator()(double dOffset)
     double tmp = std::abs(Iref[0]);
     Vofx = Vref - dOffset;
     Iofx = Iref;
-    size_t count = Iref.size();
+    const size_t count = Iref.size();
     for (size_t i = 0; i < count; i++) {
         if (std::abs(Iref[i]) < tmp) {
             lLowI = i;
@@ -36,10 +36,10 @@ double COff::operator()(double dOffset)
     }
     if (Iofx[lLowI] < 0)
         ++lLowI;
-    size_t lLengthPos = count - lLowI;
-    size_t lLengthNeg = count - lLengthPos;
+    const size_t lLengthPos = count - lLowI;
+    const size_t lLengthNeg = count - lLengthPos;
     std::valarray<double> Vlow, Ilow, Vhigh, Ihigh;
-    size_t lLengthLow = 0, lLengthHigh = 0;
+    size_t lLengthLow, lLengthHigh;
     if (lLengthPos > lLengthNeg) {
         lLengthHigh = lLengthPos;
         lLengthLow = lLengthNeg;

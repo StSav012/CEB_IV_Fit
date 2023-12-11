@@ -1,30 +1,18 @@
-#ifndef _MINS_H_
-#define _MINS_H_
+#ifndef MINS_H
+#define MINS_H
 
 #include <cmath>
 #include <ctime>
 #include <fstream>
 #include <functional>
-#include <iostream>
 
-inline void writeConverg(double x, double f, clock_t start)
-{
-    std::clog << '\n' << "CURRENT XMIN = " << x << '\t' << "CHISQMIN = " << f << std::endl;
+#include "utils.h"
 
-    std::ofstream conv;
-    conv.open("converg.txt", std::ofstream::app);
-    conv << x << f << (double) (clock() - start) / CLOCKS_PER_SEC << std::endl;
-    conv.close();
-    return;
-}
-
-struct Bracketmethod
-{
+struct Bracketmethod {
     double ax, bx, cx, fa, fb, fc;
 
-    void bracket(const double a, const double b, std::function<double(double)> &func)
-    {
-        const double GOLD = 1.618034, GLIMIT = 100.0, TINY = 1.0e-20;
+    void bracket(const double a, const double b, const std::function<double(double)>& func) {
+        constexpr double GOLD = 1.618034;
         ax = a;
         bx = b;
         double fu;
@@ -37,11 +25,13 @@ struct Bracketmethod
         cx = bx + GOLD * (bx - ax);
         fc = func(cx);
         while (fb > fc) {
-            double r = (bx - ax) * (fb - fc);
-            double q = (bx - cx) * (fb - fa);
+            constexpr double TINY = 1.0e-20;
+            constexpr double GLIMIT = 100.0;
+            const double r = (bx - ax) * (fb - fc);
+            const double q = (bx - cx) * (fb - fa);
             double u = bx
                        - ((bx - cx) * q - (bx - ax) * r)
-                             / (2.0 * std::copysign(std::max(std::abs(q - r), TINY), q - r));
+                       / (2.0 * std::copysign(std::max(std::abs(q - r), TINY), q - r));
             double ulim = bx + GLIMIT * (cx - bx);
             if ((bx - u) * (u - cx) > 0.0) {
                 fu = func(u);
@@ -51,7 +41,8 @@ struct Bracketmethod
                     fa = fb;
                     fb = fu;
                     return;
-                } else if (fu > fb) {
+                }
+                if (fu > fb) {
                     cx = u;
                     fc = fu;
                     return;
@@ -76,41 +67,36 @@ struct Bracketmethod
         }
     }
 
-    inline void shft2(double &a, double &b, const double c)
-    {
+    static void shft2(double& a, double& b, const double c) {
         a = b;
         b = c;
     }
 
-    inline void shft3(double &a, double &b, double &c, const double d)
-    {
+    static void shft3(double& a, double& b, double& c, const double d) {
         a = b;
         b = c;
         c = d;
     }
 
-    inline void mov3(double &a, double &b, double &c, const double d, const double e, const double f)
-    {
+    static void mov3(double& a, double& b, double& c, const double d, const double e, const double f) {
         a = d;
         b = e;
         c = f;
     }
 };
 
-struct Golden : Bracketmethod
-{
+struct Golden : Bracketmethod {
     double xmin, fmin;
     const double tol;
 
     Golden(const double toll = 3.0e-8)
-        : tol(toll)
-        , fmin(NAN)
-    {}
+        : fmin(NAN)
+          , tol(toll) {
+    }
 
     template<class T>
-    double minimize(T &func)
-    {
-        clock_t start = clock();
+    double minimize(T& func) {
+        const time_t start = time(nullptr);
         const double R = 0.61803399, C = 1.0 - R;
         double x1, x2;
         double x0 = ax;
@@ -148,47 +134,44 @@ struct Golden : Bracketmethod
     }
 };
 
-struct Brent : Bracketmethod
-{
+struct Brent : Bracketmethod {
     double xmin, fmin;
     const double tol;
 
     Brent(const double toll = 3.0e-8)
-        : tol(toll)
-    {}
+        : tol(toll) {
+    }
 
     template<class T>
-    double minimize(T &func)
-    {
-        const int ITMAX = 100;
-        const double CGOLD = 0.3819660;
-        const double ZEPS = std::numeric_limits<double>::epsilon() * 1.0e-3;
-        double a, b, d = 0.0, etemp, fu, fv, fw, fx;
-        double p, q, r, tol1, tol2, u, v, w, x, xm;
+    double minimize(T& func) {
+        constexpr int ITMAX = 100;
+        constexpr double ZEPS = std::numeric_limits<double>::epsilon() * 1.0e-3;
+        double d = 0.0, fv, fx;
+        double tol1, u, v, w;
         double e = 0.0;
 
-        a = (ax < cx ? ax : cx);
-        b = (ax > cx ? ax : cx);
-        x = w = v = bx;
-        fw = fv = fx = func(x);
-        clock_t start;
-        start = clock();
+        double a = (ax < cx ? ax : cx);
+        double b = (ax > cx ? ax : cx);
+        double x = w = v = bx;
+        double fw = fv = fx = func(x);
+        const time_t start = time(nullptr);
         for (int iter = 0; iter < ITMAX; iter++) {
-            xm = 0.5 * (a + b);
-            tol2 = 2.0 * (tol1 = tol * std::abs(x) + ZEPS);
+            constexpr double CGOLD = 0.3819660;
+            const double xm = 0.5 * (a + b);
+            double tol2 = 2.0 * (tol1 = tol * std::abs(x) + ZEPS);
             if (std::abs((x - xm) / xm) <= tol) {
                 fmin = fx;
                 return xmin = x;
             }
             if (std::abs(e) > tol1) {
-                r = (x - w) * (fx - fv);
-                q = (x - v) * (fx - fw);
-                p = (x - v) * q - (x - w) * r;
+                const double r = (x - w) * (fx - fv);
+                double q = (x - v) * (fx - fw);
+                double p = (x - v) * q - (x - w) * r;
                 q = 2.0 * (q - r);
                 if (q > 0.0)
                     p = -p;
                 q = std::abs(q);
-                etemp = e;
+                const double etemp = e;
                 e = d;
                 if (std::abs(p) >= std::abs(0.5 * q * etemp) || p <= q * (a - x) || p >= q * (b - x))
                     d = CGOLD * (e = (x >= xm ? a - x : b - x));
@@ -202,8 +185,7 @@ struct Brent : Bracketmethod
                 d = CGOLD * (e = (x >= xm ? a - x : b - x));
             }
             u = (std::abs(d) >= tol1 ? x + d : x + std::copysign(tol1, d));
-            fu = func(u);
-            if (fu <= fx) {
+            if (const double fu = func(u); fu <= fx) {
                 if (u >= x)
                     a = x;
                 else
@@ -227,53 +209,50 @@ struct Brent : Bracketmethod
             }
             writeConverg(x, fx, start);
         }
-        throw("Too many iterations in brent");
+        throw std::runtime_error("Too many iterations in brent");
     }
 };
 
-struct Dbrent : Bracketmethod
-{
+struct Dbrent : Bracketmethod {
     double xmin, fmin;
     const double tol;
 
     Dbrent(const double toll = 3.0e-8)
-        : tol(toll)
-    {}
+        : tol(toll) {
+    }
 
     template<class T>
-    double minimize(T &funcd)
-    {
-        const int ITMAX = 100;
-        const double ZEPS = std::numeric_limits<double>::epsilon() * 1.0e-3;
-        bool ok1, ok2;
-        double a, b, d = 0.0, d1, d2, du, dv, dw, dx, e = 0.0;
-        double fu, fv, fw, fx, olde, tol1, tol2, u, u1, u2, v, w, x, xm;
+    double minimize(T& funcd) {
+        constexpr int ITMAX = 100;
+        constexpr double ZEPS = std::numeric_limits<double>::epsilon() * 1.0e-3;
+        double d = 0.0, dv, dx, e = 0.0;
+        double fu, fv, fx, u, v, w;
 
-        a = (ax < cx ? ax : cx);
-        b = (ax > cx ? ax : cx);
-        x = w = v = bx;
-        fw = fv = fx = funcd(x);
-        dw = dv = dx = funcd.df(x);
+        double a = (ax < cx ? ax : cx);
+        double b = (ax > cx ? ax : cx);
+        double x = w = v = bx;
+        double fw = fv = fx = funcd(x);
+        double dw = dv = dx = funcd.df(x);
         for (int iter = 0; iter < ITMAX; iter++) {
-            xm = 0.5 * (a + b);
-            tol1 = tol * std::abs(x) + ZEPS;
-            tol2 = 2.0 * tol1;
+            const double xm = 0.5 * (a + b);
+            double tol1 = tol * std::abs(x) + ZEPS;
+            double tol2 = 2.0 * tol1;
             if (std::abs(x - xm) <= (tol2 - 0.5 * (b - a))) {
                 fmin = fx;
                 return xmin = x;
             }
             if (std::abs(e) > tol1) {
-                d1 = 2.0 * (b - a);
-                d2 = d1;
+                double d1 = 2.0 * (b - a);
+                double d2 = d1;
                 if (dw != dx)
                     d1 = (w - x) * dx / (dx - dw);
                 if (dv != dx)
                     d2 = (v - x) * dx / (dx - dv);
-                u1 = x + d1;
-                u2 = x + d2;
-                ok1 = (a - u1) * (u1 - b) > 0.0 && dx * d1 <= 0.0;
-                ok2 = (a - u2) * (u2 - b) > 0.0 && dx * d2 <= 0.0;
-                olde = e;
+                const double u1 = x + d1;
+                const double u2 = x + d2;
+                const bool ok1 = (a - u1) * (u1 - b) > 0.0 && dx * d1 <= 0.0;
+                const bool ok2 = (a - u2) * (u2 - b) > 0.0 && dx * d2 <= 0.0;
+                const double olde = e;
                 e = d;
                 if (ok1 || ok2) {
                     if (ok1 && ok2)
@@ -306,7 +285,7 @@ struct Dbrent : Bracketmethod
                     return xmin = x;
                 }
             }
-            du = funcd.df(u);
+            const double du = funcd.df(u);
             if (fu <= fx) {
                 if (u >= x)
                     a = x;
@@ -328,7 +307,7 @@ struct Dbrent : Bracketmethod
                 }
             }
         }
-        throw("Too many iterations in routine dbrent");
+        throw std::runtime_error("Too many iterations in routine dbrent");
     }
 };
 

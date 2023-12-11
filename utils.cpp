@@ -1,7 +1,7 @@
 #include <cmath>
 #include <ctime>
 #include <fstream>
-#include <limits>
+#include <iostream>
 #include <string>
 #include <valarray>
 #include <vector>
@@ -10,14 +10,13 @@
 #include "mins.h"
 #include "utils.h"
 
-size_t GetExp(const std::string &fname,
-              std::valarray<double> &Iexp,
-              std::valarray<double> &Vexp,
-              const bool bRemOffset)
-{
+size_t GetExp(const std::string& fname,
+              std::valarray<double>& Iexp,
+              std::valarray<double>& Vexp,
+              const bool bRemOffset) {
     /*
      *  Get experimental values `Iexp` and `Vexp` from file `fname`
-     * 
+     *
      *  'bRemOffset' indicates to remove offsets
      */
 
@@ -28,17 +27,15 @@ size_t GetExp(const std::string &fname,
         in.open(fname, std::ifstream::in);
 
         double tmpV, tmpI;
-        int c = 0;
         while (!in.eof()) {
             in >> std::skipws >> tmpV >> tmpI;
             vVexp.push_back(tmpV);
             vIexp.push_back(tmpI);
         }
-    } catch (std::exception &e) {
+    } catch (std::exception& e) {
         std::cerr << "Error while reading experimental data: " << e.what() << std::endl;
         getchar();
         exit(0);
-        return 0;
     }
 
     std::clog << "Fitting for " << fname << " started!" << std::endl;
@@ -70,25 +67,24 @@ size_t GetExp(const std::string &fname,
     return count;
 }
 
-void Resample(std::valarray<double> &Irex,
-              std::valarray<double> &Vrex,
-              const std::valarray<double> &Iexp,
-              const std::valarray<double> &Vexp,
-              const std::valarray<double> &Inum,
-              const std::valarray<double> &Vnum)
-{
+void Resample(std::valarray<double>& Irex,
+              std::valarray<double>& Vrex,
+              const std::valarray<double>& Iexp,
+              const std::valarray<double>& Vexp,
+              const std::valarray<double>& Inum,
+              const std::valarray<double>& Vnum) {
     /*
      *  Resample the IV-curve to the specified range
-     * 
+     *
      *  Adapt of experimental data for the fitting algorithm.
      *  Make the points differ by the same voltage.
      */
 
     if (Iexp.size() != Vexp.size()) {
-        throw("Experimental I and V must be of the same size");
+        throw std::length_error("Experimental I and V must be of the same size");
     }
     if (Inum.size() != Vnum.size()) {
-        throw("Numeric I and V must be of the same size");
+        throw std::length_error("Numeric I and V must be of the same size");
     }
 
     const size_t countnum = Vnum.size();
@@ -98,12 +94,11 @@ void Resample(std::valarray<double> &Irex,
 
     size_t lLeft, lRight;
     for (size_t i = 0; i < countnum; ++i) {
-        double dCurVal = Vnum[i];
+        const double dCurVal = Vnum[i];
         size_t lCurPos = 0;
         double tmp = std::abs(dCurVal - Vexp[0]);
         for (size_t j = 1; j < countexp; j++) {
-            double tmp1 = std::abs(dCurVal - Vexp[j]);
-            if (tmp1 < tmp) {
+            if (double tmp1 = std::abs(dCurVal - Vexp[j]); tmp1 < tmp) {
                 tmp = tmp1;
                 lCurPos = j;
             }
@@ -124,76 +119,71 @@ void Resample(std::valarray<double> &Irex,
         else
             Irex[i] = Iexp[lLeft]
                       + (dCurVal - Vexp[lLeft]) * (Iexp[lRight] - Iexp[lLeft])
-                            / (Vexp[lRight] - Vexp[lLeft]);
+                      / (Vexp[lRight] - Vexp[lLeft]);
     }
 
     writeIV("IVresampled.txt", Irex, Vrex);
-
-    return;
 }
 
-double ChiSq(const std::valarray<double> &Inum, const std::valarray<double> &Irex)
-{
+double ChiSq(const std::valarray<double>& Inum, const std::valarray<double>& Irex) {
     /*
-     *  Calculate Chi² figure of merit calculation for current difference
+     *  Calculate Chi² figure of merit for current difference
      */
 
     if (Inum.size() != Irex.size()) {
-        throw("Numeric I and Recalculated I must be of the same size");
+        throw std::length_error("Numeric I and Recalculated I must be of the same size");
     }
 
-    return std::pow((Inum - Irex) / Irex, 2).sum() / Inum.size();
+    return std::pow((Inum - Irex) / Irex, 2).sum() / static_cast<double>(Inum.size());
 }
 
-double ChiSqHi(const std::valarray<double> &Inum, const std::valarray<double> &Irex)
-{
+double ChiSqHi(const std::valarray<double>& Inum, const std::valarray<double>& Irex) {
     /*
      *  Calculate Chi² figure of merit
      */
 
     if (Inum.size() != Irex.size()) {
-        throw("Numeric I and Recalculated I must be of the same size");
+        throw std::length_error("Numeric I and Recalculated I must be of the same size");
     }
 
-    std::valarray<double> dI2 = std::pow(Inum - Irex, 2);
-    size_t countnum = Inum.size();
+    const std::valarray<double> dI2 = std::pow(Inum - Irex, 2);
+    const size_t countnum = Inum.size();
     double sum = 0;
     for (size_t i = 0; i < countnum; i++) {
-        sum += dI2[i] * i;
+        sum += dI2[i] * static_cast<double>(i);
     }
-    return sum * 1e8 / countnum;
+    return 1e8 * sum / static_cast<double>(countnum);
 }
 
-double ChiSqDer(const std::valarray<double> &Vnum,
-                const std::valarray<double> &Inum,
-                const std::valarray<double> &Irex)
-{
+double ChiSqDer(const std::valarray<double>& Vnum,
+                const std::valarray<double>& Inum,
+                const std::valarray<double>& Irex) {
     /*
      *  Calculate Chi² figure of merit for differential resistance
      */
 
     if (Inum.size() != Vnum.size()) {
-        throw("Numeric I and V must be of the same size");
+        throw std::length_error("Numeric I and V must be of the same size");
     }
     if (Inum.size() != Irex.size()) {
-        throw("Numeric I and Recalculated I must be of the same size");
+        throw std::length_error("Numeric I and Recalculated I must be of the same size");
     }
 
     const size_t countnum = Vnum.size();
-    std::valarray<double> dVnum = Vnum[std::slice(1, countnum - 1, 1)]
-                                  - Vnum[std::slice(0, countnum - 1, 1)];
-    std::valarray<double> dInum = Inum[std::slice(1, countnum - 1, 1)]
-                                  - Inum[std::slice(0, countnum - 1, 1)];
-    std::valarray<double> dIrex = Irex[std::slice(1, countnum - 1, 1)]
-                                  - Irex[std::slice(0, countnum - 1, 1)];
+    const std::valarray dVnum = Vnum[std::slice(1, countnum - 1, 1)]
+                                - Vnum[std::slice(0, countnum - 1, 1)];
+    const std::valarray dInum = Inum[std::slice(1, countnum - 1, 1)]
+                                - Inum[std::slice(0, countnum - 1, 1)];
+    const std::valarray dIrex = Irex[std::slice(1, countnum - 1, 1)]
+                                - Irex[std::slice(0, countnum - 1, 1)];
     return ChiSq(Inum, Irex)
            + (std::pow((dInum - dIrex) / dVnum, 2) / std::pow(dIrex / dVnum, 2)).sum()
-                 / (countnum - 1);
+           / static_cast<double>(countnum - 1);
 }
 
 /*
  * Not used for fitting now
- * 
+ *
 void GetDBStartPoint(double *par, const char *fname)
 {
     CFoo foo(0);
@@ -253,22 +243,29 @@ void GetDBStartPoint(double *par, const char *fname)
 */
 
 // Write two columns of data into a file
-void writeIV(const std::string &filename,
-             const std::valarray<double> &I,
-             const std::valarray<double> &V)
-{
+void writeIV(const std::string& filename,
+             const std::valarray<double>& I,
+             const std::valarray<double>& V) {
     /*
      *  Write two columns of data into a file
      */
     if (I.size() != V.size()) {
-        throw("I and V must be of the same size");
+        throw std::length_error("I and V must be of the same size");
     }
 
-    std::ofstream f;
-    f.open(filename.c_str(), std::ofstream::out);
-    for (auto pv = begin(V), pi = begin(I); pv != end(V) && pi != end(I); ++pv, ++pi) {
-        f << *pv << ' ' << *pi << std::endl;
+    if (std::ofstream f(filename.c_str(), std::ios::out); f) {
+        for (auto pv = begin(V), pi = begin(I); pv != end(V) && pi != end(I); ++pv, ++pi) {
+            f << *pv << ' ' << *pi << std::endl;
+        }
+        f.close();
     }
-    f.close();
-    return;
+}
+
+void writeConverg(const double x, const double f, const time_t start) {
+    std::clog << '\n' << "CURRENT XMIN = " << x << '\t' << "CHISQMIN = " << f << std::endl;
+
+    if (std::ofstream conv("converg.txt", std::ios::app); conv) {
+        conv << x << f << (double) std::difftime(time(nullptr), start) << std::endl;
+        conv.close();
+    }
 }
