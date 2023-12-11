@@ -32,6 +32,7 @@ qrc_*.cpp
 Thumbs.db
 *.res
 *.rc
+/.cache/
 /.qmake.cache
 /.qmake.stash
 
@@ -83,3 +84,4 @@ CMakeLists.txt.user*
 /NEP.dat
 /Noise.dat
 /Te.txt
+/Te_old.txt
