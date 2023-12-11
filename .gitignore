@@ -70,6 +70,9 @@ CMakeLists.txt.user*
 *.Debug
 *.Release
 
+# CLion generated files
+/cmake-build-*
+
 # Python byte code
 *.pyc
 
