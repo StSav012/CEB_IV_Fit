@@ -53,12 +53,8 @@ size_t GetExp(const std::string& fname,
         double dOffset = 0;
         double dLBound = -0.0005;
         double dRBound = 0.0005;
-        Golden broff;
-        broff.ax = dLBound;
-        broff.bx = dOffset;
-        broff.cx = dRBound;
         COff Off(Iexp, Vexp);
-        dOffset = broff.minimize(Off);
+        std::tie(dOffset, std::ignore) = GoldenMinimize(Off, dLBound, dRBound, dOffset);
         Vexp -= dOffset;
 
         writeIV("IVoffset.txt", Iexp, Vexp);
