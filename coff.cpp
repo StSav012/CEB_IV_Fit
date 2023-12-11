@@ -10,14 +10,11 @@ COff::COff(const std::valarray<double>& Iexp, const std::valarray<double>& Vexp)
         throw std::length_error("I and V must be of the same size");
     }
 
-    const size_t count = Iexp.size();
-    Iofx.resize(count);
-    Vofx.resize(count);
     Iref = Iexp;
     Vref = Vexp;
 }
 
-double COff::operator()(const double dOffset) {
+double COff::operator()(const double dOffset) const {
     /*
      *  Make an object of the class act like a callable
      *  
@@ -25,8 +22,8 @@ double COff::operator()(const double dOffset) {
      */
     size_t lLowI = 0;
     double tmp = std::abs(Iref[0]);
-    Vofx = Vref - dOffset;
-    Iofx = Iref;
+    const std::valarray<double> Vofx = Vref - dOffset;
+    const std::valarray<double> Iofx = Iref;
     const size_t count = Iref.size();
     for (size_t i = 0; i < count; i++) {
         if (std::abs(Iref[i]) < tmp) {
