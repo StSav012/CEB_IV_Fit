@@ -14,24 +14,20 @@
 /*
  * Never used
  */
-inline double current(double v, double tau) {
+template<class ScalarLike>
+double current(const ScalarLike& v, const double tau) {
     /*  Compute the current using approximation [delta(0) / eRn]
      *
      *  `v` is voltage,
      *  `tau` is for temperature
      */
 
-    double s;
+    const double a0 = 1 + 0.375 * tau - 0.1171875 * std::pow(tau, 2);
+    const double a1 = tau * std::pow(a0, 2);
+    ScalarLike a2 = 1.0 + std::exp((std::abs(v) - 1) / tau - (1.15 + tau));
+    ScalarLike a3 = (std::pow(v, 2) - 1.0) / (1.0 + std::exp(-(std::pow(v, 2) - 1) / tau));
 
-    const double a0 = 1 + 0.375 * tau - 0.1171875 * tau * tau;
-    const double a1 = tau * a0 * a0;
-    double a2 = 1 + std::exp((std::abs(v) - 1) / tau - (1.15 + tau));
-    double a3 = (v * v - 1) / (1 + std::exp(-(v * v - 1) / tau));
-
-    if (v > 0)
-        s = 1;
-    else
-        s = -1;
+    ScalarLike s = (v >= 0.0) * 2.0 - 1.0;
 
     // [delta(0) / eRn]
     return s * std::sqrt(2.0 * M_PI * a1 / a2 + a3)
@@ -39,7 +35,8 @@ inline double current(double v, double tau) {
               + 1.0 / (2.0 * std::exp((1.0 + v) / tau) + 1.0));
 }
 
-inline double currentInt(const double DT, const double v, const double tau, double const tauE) {
+template<class ScalarLike>
+double currentInt(const double DT, const ScalarLike& v, const double tau, const double tauE) {
     /*
      * Compute the current using exact integral, rectangle method
      *
@@ -52,25 +49,26 @@ inline double currentInt(const double DT, const double v, const double tau, doub
     const double dx = INTEGRATION_SCALE * DT;
     const double inf = ESSENTIALLY_INFINITY_SCALE * DT;
     const double DT2 = std::pow(DT, 2);
-    const double v1 = std::abs(v);
+    const ScalarLike v1 = std::abs(v);
 
-    double pos_i = 0, neg_i = 0;
+    ScalarLike pos_i = 0.0, neg_i = 0.0;
 
     double x = DT; // energy
     while (x <= inf) {
         constexpr double accuracy = 1e-6;
         const double a2 = std::sqrt(std::pow(x, 2) - DT2);
 
-        double a0 = 1.0 / (std::exp((x - v1) / tauE) + 1);
-        double a1 = 1.0 / (std::exp(x / tau) + 1);
-        double i_step = x / a2 * (a0 - a1);
+        ScalarLike a0 = 1.0 / (std::exp((x - v1) / tauE) + 1.0);
+        double a1 = 1.0 / (std::exp(x / tau) + 1.0);
+
+        ScalarLike i_step = x / a2 * (a0 - a1);
         // accuracy check at every iteration
         if (std::abs(i_step) < accuracy)
             break;
         pos_i += i_step;
 
-        a0 = 1.0 / (std::exp((-x - v1) / tauE) + 1);
-        a1 = 1.0 / (std::exp(-x / tau) + 1);
+        a0 = 1.0 / (std::exp((-x - v1) / tauE) + 1.0);
+        a1 = 1.0 / (std::exp(-x / tau) + 1.0);
         i_step = x / a2 * (a0 - a1);
         // accuracy check at every iteration
         if (std::abs(i_step) < accuracy)
@@ -80,28 +78,25 @@ inline double currentInt(const double DT, const double v, const double tau, doub
         x += dx;
     }
 
-    double s;
-    if (v > 0)
-        s = 1;
-    else
-        s = -1;
+    ScalarLike s = (v >= 0.0) * 2.0 - 1.0;
 
     return (pos_i + neg_i) * dx * s;
 }
 
-inline double PowerCoolPiece(const double v, const double tau) {
+template<class ScalarLike>
+double PowerCoolPiece(const ScalarLike& v, const double tau) {
     /*
      *  A part of `PowerCool`
      */
-    const double a0 = (1 - v) / tau;
-    const double tmp1 = 2.0 * std::exp(a0);
-    const double tmp2 = std::exp(2.5 * (a0 + 2));
+    const ScalarLike a0 = (1.0 - v) / tau;
+    const ScalarLike tmp1 = 2.0 * std::exp(a0);
+    const ScalarLike tmp2 = std::exp(2.5 * (a0 + 2));
     const double PItau = M_PI * tau;
-    const double a1 = std::sqrt(2.0 * PItau) * ((1 - v) / (tmp1 + 1.28) + 0.5 * tau / (tmp1 + 0.64))
-                      / (1.0 / tmp2 + 1.0);
-    double a3;
+    const ScalarLike a1 = std::sqrt(2.0 * PItau) * ((1 - v) / (tmp1 + 1.28) + 0.5 * tau / (tmp1 + 0.64))
+                          / (1.0 / tmp2 + 1.0);
+    ScalarLike a3;
     if (v - 1 - tau > 0) {
-        const double a2 = std::sqrt(std::pow(v, 2) - 1.0);
+        const ScalarLike a2 = std::sqrt(std::pow(v, 2) - 1.0);
         a3 = 0.5 * (-v * a2 + std::log(v + a2) + std::pow(PItau, 2) / 3.0 * v / a2) / (tmp2 + 1.0);
     } else {
         a3 = 0.0;
@@ -110,7 +105,8 @@ inline double PowerCoolPiece(const double v, const double tau) {
     return a1 + a3;
 }
 
-inline double PowerCool(const double v, const double tau, const double tauE) {
+template<class ScalarLike>
+double PowerCool(const ScalarLike& v, const double tau, const double tauE) {
     /*
      *  Compute the cooling power of a SIN junction
      *
@@ -119,15 +115,15 @@ inline double PowerCool(const double v, const double tau, const double tauE) {
      *  `tauE` is for electron temperature
      */
 
-    const double a1 = PowerCoolPiece(v, tauE);
-    const double b1 = PowerCoolPiece(-v, tauE);
-    const double c1 = PowerCoolPiece(0.0, tau);
+    const ScalarLike a1 = PowerCoolPiece(v, tauE);
+    const ScalarLike b1 = PowerCoolPiece(-v, tauE);
+    const ScalarLike c1 = PowerCoolPiece(0.0, tau);
 
     return a1 + b1 - c1;
 }
 
-inline double AndCurrent(
-    const double DT, const double v, const double tauE, const double Wt, const double tm) {
+template<class ScalarLike>
+ScalarLike AndCurrent(const double DT, const ScalarLike& v, const double tauE, const double Wt, const double tm) {
     /*
      *  Compute the Andreev current using exact integral, rectangle method
      *
@@ -143,15 +139,15 @@ inline double AndCurrent(
     const double twoWt = 2.0 * Wt;
     const double twoTauE = 2.0 * tauE;
 
-    double i = 0.0;
+    ScalarLike i = 0.0;
 
     //FILE *f9=fopen("SINi.dat","w");
 
-    double x = 0.0; //energy
+    double x = 0.0; // energy
     while (x <= DT) {
         const double DT2x2 = DT2 - std::pow(x, 2);
         const double sqrtDT2x2 = std::sqrt(DT2x2);
-        const double da0a1 = std::tanh((x + v) / twoTauE) - std::tanh((x - v) / twoTauE);
+        const ScalarLike da0a1 = std::tanh((x + v) / twoTauE) - std::tanh((x - v) / twoTauE);
         const double a2 = twoWt * sqrtDT2x2 / tm
                           / (std::pow(x * (twoWt - sqrtDT2x2 / DT), 2) + DT2x2 / std::pow(DT * tm, 2));
         i += DT / sqrtDT2x2 * da0a1 * a2;
@@ -163,7 +159,9 @@ inline double AndCurrent(
     //fclose(f9);
 }
 
-inline auto PowerCoolInt(const double DT, const double v, const double tau, const double tauE) {
+template<class ScalarLike>
+std::tuple<ScalarLike, ScalarLike> PowerCoolInt(const double DT, const ScalarLike& v,
+                                                const double tau, const double tauE) {
     /*
      *  Compute the integral of the cooling power of SIN junction, rectangle method
      *
@@ -173,15 +171,15 @@ inline auto PowerCoolInt(const double DT, const double v, const double tau, cons
      *  `tauE` is for electron temperature
      */
 
-    //E = x, V = v, T = tau, [x] = [v] = [tau]
+    // E = x, V = v, T = tau, [x] = [v] = [tau]
 
     const double dx = INTEGRATION_SCALE * DT;
     const double inf = ESSENTIALLY_INFINITY_SCALE * DT;
-    const double v1 = std::abs(v);
+    const ScalarLike v1 = std::abs(v);
     const double DT2 = std::pow(DT, 2);
 
-    double po = 0.0; // power
-    double ps = 0.0; // SIN cooling power
+    ScalarLike po = 0.0; // power
+    ScalarLike ps = 0.0; // SIN cooling power
 
     //FILE *f8 = fopen("DOS.txt","w");  //density of states
 
@@ -189,8 +187,9 @@ inline auto PowerCoolInt(const double DT, const double v, const double tau, cons
     while (x <= inf) {
         double x2 = std::pow(x, 2);
         double a = std::sqrt(x2 - DT2);
+        ScalarLike da2a1;
 
-        double da2a1 = (1.0 / (std::exp((x - v1) / tauE) + 1.0) - 1.0 / (std::exp(x / tau) + 1.0)) / a;
+        da2a1 = (1.0 / (std::exp((x - v1) / tauE) + 1.0) - 1.0 / (std::exp(x / tau) + 1.0)) / a;
         po += x * (x - v1) * da2a1;
         ps += x2 * da2a1;
 
