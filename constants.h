@@ -52,7 +52,9 @@ constexpr double INTEGRATION_SCALE = 0.2e-3;
 // the large enough value
 constexpr double ESSENTIALLY_INFINITY_SCALE = 20.0;
 
-/* 
+constexpr auto numberOfSINs = 2.0;
+
+/*
  *  Voltage and current noise for some amplifiers
  */
 #define AD745 745
