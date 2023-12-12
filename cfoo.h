@@ -4,11 +4,10 @@
 #include <valarray>
 
 class CFoo {
-    const size_t iNumParams = 21;
+    const size_t parCount = 21;
 
     std::valarray<double> Iexp, Vexp;
     std::valarray<double> Inum, Vnum;
-    std::valarray<double> Irex, Vrex;
 
     std::valarray<double> par;
     std::valarray<bool> ToFit;
@@ -19,9 +18,13 @@ public:
 
     size_t CEB_2eq_parallel_lite();
 
-    void SeqFit(size_t iRunCount);
+    void SeqFit(size_t runCount, const std::valarray<double>& Irex);
 
-    explicit CFoo(size_t parnum);
+    size_t loadExperimentData(const std::string& filename, bool removeOffset = false);
+
+    [[nodiscard]] std::tuple<std::valarray<double>, std::valarray<double>> resample() const;
+
+    explicit CFoo(size_t parIndex);
 };
 
 #endif
