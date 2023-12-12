@@ -1,160 +1,185 @@
 #include <cmath>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <ctime>
-#include <limits>
+#include <chrono>
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <valarray>
+#include <vector>
 
-#include "cfoo.h"
-#include "coff.h"
+#include "constants.h"
 #include "mins.h"
 #include "utils.h"
 
-long GetExp(char *fname, int iNumCols, int iColNum, double *&Iexp, double *&Vexp, bool bRemOffset)
-{ /* Gets experimental values 'Iexp' and 'Vexp' from file 'fname',
-	checking 'bRemOffset' if there is need to remove offsets*/
+#include "coff.h"
 
-    FILE *in = fopen(fname, "r");
-    if (!in) {
-        printf("Error! No such filename exists!");
-        getchar();
-        exit(0);
-    } else
-        printf("Fitting for %s started! \n", fname);
-    FILE *params = fopen("fitparameters_new.txt", "a");
-    fprintf(params, "Filename: %s \n", fname);
-    fclose(params);
-    char c = 0;
-    long count = 0;
+std::tuple<std::valarray<double>, std::valarray<double>> getExperimentalData(
+    const std::string& filename, const bool removeOffset) {
+    /*
+     *  Get experimental values `Iexp` and `Vexp` from file `fname`
+     *
+     *  'bRemOffset' indicates to remove offsets
+     */
 
-    double tmp;
+    std::vector<double> vVexp;
+    std::vector<double> vIexp;
 
-    while (fscanf(in, "%lf %lf", &tmp, &tmp) != EOF)
-        count++;
-    freopen(fname, "r", in);
-    count = count / iColNum;
-
-    if (Iexp == NULL)
-        Iexp = new double[count];
-    if (Vexp == NULL)
-        Vexp = new double[count];
-
-    for (int i = 0; i < count; i++) {
-        for (int j = 0; j < iNumCols; j++)
-            if (j == iColNum - 1) {
-                fscanf(in, "%lf", &Vexp[i]);
-                fscanf(in, "%lf", &Iexp[i]);
-            } else {
-                fscanf(in, "%lf", &tmp);
-                fscanf(in, "%lf", &tmp);
-            }
+    if (std::ifstream in(filename); in) {
+        double tmpV, tmpI;
+        while (!in.eof()) {
+            in >> std::skipws >> tmpV >> tmpI;
+            vVexp.push_back(tmpV);
+            vIexp.push_back(tmpI);
+        }
+        in.close();
+    } else {
+        throw std::runtime_error(std::format("Unable to read experimental data from \"{}\"", filename));
     }
-    if (bRemOffset) {
+
+    std::clog << "Fitting for " << std::quoted(filename) << " started!" << std::endl;
+
+    if (std::ofstream params("fitparameters_new.txt", std::ios::app); params) {
+        params << "Filename: " << std::quoted(filename) << std::endl;
+        params.close();
+    } else {
+        throw std::runtime_error("Unable to append to \"fitparameters_new.txt\"");
+    }
+
+    size_t count = std::min(vVexp.size(), vIexp.size());
+    auto Vexp = std::valarray<double>(vVexp.data(), count);
+    auto Iexp = std::valarray<double>(vIexp.data(), count);
+
+    if (removeOffset) {
         double dOffset = 0;
         double dLBound = -0.0005;
         double dRBound = 0.0005;
-        COff Off(Iexp, Vexp, count);
-        Golden broff;
-        broff.ax = dLBound;
-        broff.bx = dOffset;
-        broff.cx = dRBound;
-        dOffset = broff.minimize(Off);
-        for (int i = 0; i < count; i++)
-            Vexp[i] -= dOffset;
-        FILE *ivoff = fopen("IVoffset.txt", "w+");
-        for (int i = 0; i < count; i++)
-            fprintf(ivoff, "%e %e\n", Vexp[i], Iexp[i]);
-        fclose(ivoff);
+        std::tie(dOffset, std::ignore) = GoldenMinimize(COff(Iexp, Vexp), dLBound, dRBound, dOffset);
+        Vexp -= dOffset;
+
+        writeIV("IV offset.txt", Iexp, Vexp);
     }
 
-    return count;
+    return std::make_tuple(Iexp, Vexp);
 }
 
-void Resample(long countnum,
-              long countexp,
-              double *&Irex,
-              double *&Vrex,
-              double *&Iexp,
-              double *&Vexp,
-              double *Inum,
-              double *Vnum)
-{ /*Adaptation of experimental data for the fitting algorithm, resamples IV-curve for the specified range*/
-    long lLastPos = 0;
-    long lCurPos = 0, lLeft = 0, lRight = 0;
-    double dCurVal = 0;
-    double tmp = 0, tmp1 = 0;
-    for (long i = 0; i < countnum; i++) {
-        dCurVal = Vnum[i];
-        Vrex[i] = Vnum[i];
-        lCurPos = 0;
-        tmp = std::abs(dCurVal - Vexp[0]);
-        for (long j = 1; j < countexp; j++) {
-            tmp1 = std::abs(dCurVal - Vexp[j]);
-            if (tmp1 < tmp) {
+std::tuple<std::valarray<double>, std::valarray<double>> Resample(const std::valarray<double>& Iexp,
+                                                                  const std::valarray<double>& Vexp,
+                                                                  const std::valarray<double>& Inum,
+                                                                  const std::valarray<double>& Vnum) {
+    /*
+     *  Resample the IV-curve to the specified range
+     *
+     *  Adapt of experimental data for the fitting algorithm.
+     *  Make the points differ by the same voltage.
+     */
+
+    if (Iexp.size() != Vexp.size()) {
+        throw std::length_error("Experimental I and V must be of the same size");
+    }
+    if (Inum.size() != Vnum.size()) {
+        throw std::length_error("Numeric I and V must be of the same size");
+    }
+
+    const size_t countnum = Vnum.size();
+    const size_t countexp = Vexp.size();
+    std::valarray<double> Irex(countnum);
+    std::valarray<double> Vrex = Vnum;
+
+    size_t lLeft, lRight;
+    for (size_t i = 0; i < countnum; ++i) {
+        const double dCurVal = Vnum[i];
+        const std::valarray<double> ddCurVal = std::abs(Vnum[i] - Vexp);
+        size_t lCurPos = 0;
+        double tmp = ddCurVal[lCurPos];
+        for (size_t j = 1; j < countexp; ++j) {
+            if (double tmp1 = ddCurVal[j]; tmp1 < tmp) {
                 tmp = tmp1;
                 lCurPos = j;
             }
         }
-        if ((dCurVal - Vexp[lCurPos]) * (dCurVal - Vexp[lCurPos + 1]) <= 0
-            && lCurPos < countexp - 1) {
+        if ((lCurPos < countexp - 1)
+            && ((Vexp[lCurPos] <= dCurVal) == (dCurVal <= Vexp[lCurPos + 1]))) {
             lLeft = lCurPos;
             lRight = lCurPos + 1;
         } else {
             lLeft = lCurPos - 1;
             lRight = lCurPos;
         }
-        if (lLeft < 0)
+
+        if (lRight == 0) {
             Irex[i] = Iexp[0];
-        else if (lRight > countexp - 1)
+        } else if (lRight > countexp - 1) {
             Irex[i] = Iexp[countexp - 1];
-        else
+        } else {
             Irex[i] = Iexp[lLeft]
                       + (dCurVal - Vexp[lLeft]) * (Iexp[lRight] - Iexp[lLeft])
-                            / (Vexp[lRight] - Vexp[lLeft]);
+                      / (Vexp[lRight] - Vexp[lLeft]);
+        }
     }
-    FILE *outres = fopen("IVresampled.txt", "w");
-    for (long i = 0; i < countnum; i++) {
-        fprintf(outres, "%e %e\n", Vrex[i], Irex[i]);
-    }
-    fclose(outres);
-    return;
+
+    return std::make_tuple(Irex, Vrex);
 }
 
-double ChiSq(long countnum, double *Vnum, double *Inum, double *Irex)
-{ /*ChiSquare figure of merit calculation*/
+double ChiSq(const std::valarray<double>& Inum, const std::valarray<double>& Irex) {
+    /*
+     *  Calculate Chi² figure of merit for current difference
+     */
+
+    if (Inum.size() != Irex.size()) {
+        throw std::length_error("Numeric I and Recalculated I must be of the same size");
+    }
+
+    return std::pow((Inum - Irex) / Irex, 2).sum() / static_cast<double>(Inum.size());
+}
+
+double ChiSqHi(const std::valarray<double>& Inum, const std::valarray<double>& Irex) {
+    /*
+     *  Calculate Chi² figure of merit
+     */
+
+    if (Inum.size() != Irex.size()) {
+        throw std::length_error("Numeric I and Recalculated I must be of the same size");
+    }
+
+    const std::valarray<double> dI2 = std::pow(Inum - Irex, 2);
+    const size_t countnum = Inum.size();
     double sum = 0;
-    for (long i = 0; i < countnum; i++) {
-        sum += (Inum[i] - Irex[i]) * (Inum[i] - Irex[i]) / Irex[i] / Irex[i];
+    for (size_t i = 0; i < countnum; i++) {
+        sum += dI2[i] * static_cast<double>(i);
     }
-    return sum / countnum;
+    return 1e8 * sum / static_cast<double>(countnum);
 }
 
-double ChiSqHi(long countnum, double *Vnum, double *Inum, double *Irex)
-{ /*ChiSquare figure of merit calculation*/
-    double sum = 0;
-    for (long i = 0; i < countnum; i++) {
-        sum = sum + (Inum[i] - Irex[i]) * (Inum[i] - Irex[i]) * i * 1e8;
+double ChiSqDer(const std::valarray<double>& Vnum,
+                const std::valarray<double>& Inum,
+                const std::valarray<double>& Irex) {
+    /*
+     *  Calculate Chi² figure of merit for differential resistance
+     */
+
+    if (Inum.size() != Vnum.size()) {
+        throw std::length_error("Numeric I and V must be of the same size");
     }
-    return sum / countnum;
+    if (Inum.size() != Irex.size()) {
+        throw std::length_error("Numeric I and Recalculated I must be of the same size");
+    }
+
+    const size_t countnum = Vnum.size();
+    const std::valarray dVnum = Vnum[std::slice(1, countnum - 1, 1)]
+                                - Vnum[std::slice(0, countnum - 1, 1)];
+    const std::valarray dInum = Inum[std::slice(1, countnum - 1, 1)]
+                                - Inum[std::slice(0, countnum - 1, 1)];
+    const std::valarray dIrex = Irex[std::slice(1, countnum - 1, 1)]
+                                - Irex[std::slice(0, countnum - 1, 1)];
+    return ChiSq(Inum, Irex)
+           + (std::pow((dInum - dIrex) / dVnum, 2) / std::pow(dIrex / dVnum, 2)).sum()
+           / static_cast<double>(countnum - 1);
 }
 
-double ChiSqDer(long countnum, double *Vnum, double *Inum, double *Irex)
-{ /*ChiSquare figure of merit calculation*/
-    double sum = 0;
-    for (long i = 0; i < countnum - 1; i++) {
-        sum += (Inum[i] - Irex[i]) * (Inum[i] - Irex[i]) / Irex[i] / Irex[i]
-               + ((Inum[i + 1] - Inum[i]) / (Vnum[i + 1] - Vnum[i])
-                  - (Irex[i + 1] - Irex[i]) / (Vnum[i + 1] - Vnum[i]))
-                     * ((Inum[i + 1] - Inum[i]) / (Vnum[i + 1] - Vnum[i])
-                        - (Irex[i + 1] - Irex[i]) / (Vnum[i + 1] - Vnum[i]))
-                     / ((Irex[i + 1] - Irex[i]) / (Vnum[i + 1] - Vnum[i]) * (Irex[i + 1] - Irex[i])
-                        / (Vnum[i + 1] - Vnum[i]));
-    }
-    return sum / countnum;
-}
-
+/*
+ * Not used for fitting now
+ *
 void GetDBStartPoint(double *par, const char *fname)
-{ /*Not used for fitting now*/
+{
     CFoo foo(0);
     FILE *DB = fopen(fname, "r");
     int num, numentries = 0, flag = 0, indmin = 0;
@@ -208,4 +233,40 @@ void GetDBStartPoint(double *par, const char *fname)
     delete[] tmpI;
     delete[] tmpV;
     return;
+}
+*/
+
+// Write two columns of data into a file
+void writeIV(const std::string& filename,
+             const std::valarray<double>& I,
+             const std::valarray<double>& V) {
+    /*
+     *  Write two columns of data into a file
+     */
+    if (I.size() != V.size()) {
+        throw std::length_error("I and V must be of the same size");
+    }
+
+    if (std::ofstream f(filename); f) {
+        for (auto pv = begin(V), pi = begin(I); pv != end(V) && pi != end(I); ++pv, ++pi) {
+            f << *pv << SEP << *pi << std::endl;
+        }
+        f.close();
+    } else {
+        throw std::runtime_error(std::format("Unable to write \"{}\"", filename));
+    }
+}
+
+void writeConverg(const double x, const double f, const std::chrono::time_point<std::chrono::steady_clock> start) {
+    std::clog << '\n' << "CURRENT XMIN = " << x << SEP << "CHISQMIN = " << f << std::endl;
+
+    if (std::ofstream conv("converg.txt", std::ios::app); conv) {
+        conv
+                << x << SEP
+                << f << SEP
+                << std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count() << std::endl;
+        conv.close();
+    } else {
+        throw std::runtime_error("Unable to append to \"converg.txt\"");
+    }
 }

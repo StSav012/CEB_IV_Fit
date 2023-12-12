@@ -1,629 +1,451 @@
-#include "cfoo.h"
+#include <chrono>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <numeric>
+#include <random>
+#include <string>
+#include <vector>
+
 #include "CEB_2eq_parallel_lite.h"
 #include "constants.h"
 #include "mins.h"
 #include "utils.h"
 
-double CFoo::operator()(double dParam)
-{
-    double dMinimize;
+#include "cfoo.h"
+
+CFoo::CFoo(size_t parIndex) {
+    /*
+     *  Set the base parameters for fitting
+     */
+    par.resize(parCount);
+    ToFit.resize(parCount);
+
+    iParNum = parIndex;
+
+    if (std::ifstream parfile("startparams.txt"); parfile) {
+        std::string parname;
+        for (int i = 0; i < parCount; ++i) {
+            parfile >> std::skipws >> parname >> par[i] >> ToFit[i];
+
+            std::clog << std::left << std::setw(18) << std::format("{} = {},", parname, par[i])
+                    << std::internal << "to fit = " << std::boolalpha << ToFit[i]
+                    << std::endl;
+        }
+        parfile.close();
+    } else {
+        throw std::runtime_error("Can't read `startparams.txt`");
+    }
+}
+
+double CFoo::operator()(const double dParam) {
     par[iParNum] = dParam;
 
-    countnum = CEB_2eq_parallel_lite();
-    Resample(countnum, countexp, Irex, Vrex, Iexp, Vexp, Inum, Vnum);
+    CEB_2eq_parallel_lite();
+    auto [Irex, Vrex] = resample();
 
-    dMinimize = ChiSqDer(countnum, Vnum, Inum, Irex);
-    return dMinimize;
+    return ChiSqDer(Vnum, Inum, Irex);
 }
 
-CFoo::CFoo(int parnum)
-{ /*Used to set the base parameters for fitting*/
-    iParNum = parnum;
-    struct parametername
-    {
-        char parname[20];
-    };
-    FILE *parfile;
-    float param[21];
-    int Fit[21];
-    struct parametername parameters[21];
-    int i = 0;
-    parfile = fopen("startparams.txt", "r");
-    if (!parfile) {
-        printf("No parameters file!");
-        getchar();
-        exit(0);
-    }
-    while (fscanf(parfile, "%s %f %i", parameters[i].parname, &param[i], &Fit[i]) != EOF) {
-        printf("%s = %f, to fit = %i\n", parameters[i].parname, param[i], Fit[i]);
-        i++;
-    }
-    fclose(parfile);
+void CFoo::SeqFit(size_t runCount, const std::valarray<double>& Irex) {
+    /*
+     *  Fit using Golden method
+     */
 
-    par[0] = param[0];
-    Pbg = par[0];
-    ToFit[0] = Fit[0]; //power for all structure
+    std::random_device r;
+    std::default_random_engine generator(r());
 
-    par[1] = param[1];
-    beta = par[1];
-    ToFit[1] = Fit[1]; //returned power
+    writeConverg(par[iParNum], ChiSq(Inum, Irex), std::chrono::steady_clock::now());
 
-    par[2] = param[2];
-    TephPOW = par[2];
-    ToFit[2] = Fit[2]; //exponent for Te-ph
+    for (size_t run = 0; run < runCount; ++run) {
+        std::clog << "SeqFit run " << run << std::endl;
 
-    par[3] = param[3];
-    gamma = par[3];
-    ToFit[3] = Fit[3]; //gap smearing
+        std::vector<int> ParSeq(parCount);
+        std::vector<int> Tmp(parCount);
 
-    par[4] = param[4];
-    Vol = par[4];
-    ToFit[4] = Fit[4]; //volume of absorber
+        // fill `Tmp` with a sequence of ints from 0 to (iNumParams - 1)
+        std::iota(Tmp.begin(), Tmp.end(), 0);
 
-    par[5] = param[5];
-    VolS = par[5];
-    ToFit[5] = Fit[5]; //volume of superconductor
-
-    par[6] = param[6];
-    Z = par[6];
-    ToFit[6] = Fit[6]; //heat exchange in normal metal
-
-    par[7] = param[7];
-    ZS = par[7];
-    ToFit[7] = Fit[7]; //sigma of superconductor
-
-    par[8] = param[8];
-    Tc = par[8];
-    ToFit[8] = Fit[8]; //critical temperature of superconductor
-
-    par[9] = param[9];
-    Rn = par[9];
-    ToFit[9] = Fit[9]; //total normal resistance
-
-    par[10] = param[10];
-    Rleak = par[10];
-    ToFit[10] = Fit[10]; //leakage resistance
-
-    par[11] = param[11];
-    Wt = par[11];
-    ToFit[11] = Fit[11]; //transparency of barter
-
-    par[12] = param[12];
-    tm = par[12];
-    ToFit[12] = Fit[12]; //depairing energy
-
-    par[13] = param[13];
-    ii = par[13];
-    ToFit[13] = Fit[13]; //coefficient for Andreev current
-
-    par[14] = param[14];
-    Ra = par[14];
-    ToFit[14] = Fit[14]; //resistance of absorber
-
-    par[15] = param[15];
-    M = par[15];
-    ToFit[15] = Fit[15]; //number of bolometers in series
-
-    par[16] = param[16];
-    MP = par[16];
-    ToFit[16] = Fit[16]; //number of bolometers in parallel
-
-    par[17] = param[17];
-    Tp = par[17];
-    ToFit[17] = Fit[17]; //phonon temperature
-
-    par[18] = param[18];
-    dVFinVg = par[18];
-    ToFit[18] = Fit[18];
-
-    par[19] = param[19];
-    dVStartVg = par[19];
-    ToFit[19] = Fit[19];
-
-    par[20] = param[20];
-    dV = par[20];
-    ToFit[20] = Fit[20];
-
-    char fname[]
-        = "SINS1_53_240_303_mK.txt"; //default filename here. Format: two columns (voltage (V), current(A)), decimal delimiter: .
-
-    //printf("Enter the name of file: \n");			//example: "ol g7-25nn\200mk_2g.txt"
-    //scanf("%[^\n]", fname);				//your filename here	Iexp=NULL;
-
-    Vexp = NULL;
-    Inum = NULL;
-    Vnum = NULL;
-    countexp = GetExp(fname, 1, 1, Iexp, Vexp, 0);
-    countnum = CEB_2eq_parallel_lite();
-    Irex = new double[countnum];
-    Vrex = new double[countnum];
-    Resample(countnum, countexp, Irex, Vrex, Iexp, Vexp, Inum, Vnum);
-
-    FILE *conv = fopen("converg.txt", "w");
-    fprintf(conv, "%lf %e 0\n", par[iParNum], ChiSq(countnum, Vnum, Inum, Irex));
-    fclose(conv);
-}
-
-CFoo::~CFoo()
-{
-    if (Iexp != NULL)
-        delete[] Iexp;
-    if (Vexp != NULL)
-        delete[] Vexp;
-    if (Inum != NULL)
-        delete[] Inum;
-    if (Vnum != NULL)
-        delete[] Vnum;
-    if (Irex != NULL)
-        delete[] Irex;
-    if (Vrex != NULL)
-        delete[] Vrex;
-}
-
-void CFoo::SeqFit(int iRunCount)
-{ /*Fits using Golden method*/
-    Golden method(1e-3);
-
-    for (int i = 0; i < iRunCount; i++) {
-        int ParSeq[iNumParams];
-        int Tmp[iNumParams];
-        int iRandom = 0;
-
-        srand(time(NULL));
-        for (int j = 0; j < iNumParams; j++)
-            Tmp[j] = j;
-        for (int j = 0; j < iNumParams; j++) {
-            iRandom = rand() % (iNumParams - j);
+        for (size_t j = 0; j < parCount; ++j) {
+            std::uniform_int_distribution<size_t> distribution(0, parCount - j);
+            const size_t iRandom = distribution(generator);
             ParSeq[j] = Tmp[iRandom];
-            for (int k = 0; k < iNumParams - iRandom - 1; k++) {
-                Tmp[iRandom + k] = Tmp[iRandom + k + 1];
+            // shift items of `Tmp` from `iRandom` to the end
+            for (size_t k = iRandom + 1; k < parCount; ++k) {
+                Tmp[k - 1] = Tmp[k];
             }
         }
-        //for (int j=0; j<iNumParams; j++) ParSeq[j]=j;
 
-        for (int j = 0; j < iNumParams; j++)
+        double fmin;
+        for (int j = 0; j < parCount; ++j) {
             if (ToFit[ParSeq[j]]) {
                 iParNum = ParSeq[j];
-                method.ax = 0.5 * par[iParNum];
-                method.bx = 1 * par[iParNum];
-                method.cx = 2 * par[iParNum];
-                //printf("Bracketed at: %lf %lf %lf", brent.ax, brent.bx, brent.cx);
-                //scanf("%lf", &tmp);
-
-                par[iParNum] = method.minimize(*this);
+                std::tie(par[iParNum], fmin) = GoldenMinimize(
+                    *this,
+                    0.5 * par[iParNum], 2.0 * par[iParNum],
+                    1.0 * par[iParNum],
+                    1e-3
+                );
             }
-        FILE *params = fopen("fitparameters_new.txt", "a");
-        for (int i = 0; i < iNumParams; i++)
-            fprintf(params, "%lf\t", par[i]);
-        fprintf(params, "%e\n", method.fmin);
-        fclose(params);
+        }
+        if (std::fstream params("fitparameters_new.txt", std::fstream::app); params) {
+            for (const auto p: par)
+                params << p << SEP;
+            params << fmin << std::endl;
+            params.close();
+        }
     }
 }
 
-long CFoo::CEB_2eq_parallel_lite(void)
-{
-    FILE *f2, *f3, *f3old, *f4, *f5; //Noise, Te, Te_old, NEP, G
+size_t CFoo::loadExperimentData(const std::string& filename, const bool removeOffset) {
+    std::tie(Iexp, Vexp) = getExperimentalData(filename, removeOffset);
+    if (Iexp.size() != Vexp.size()) {
+        throw std::length_error("Experimental I and V must be of the same size");
+    }
+    return Iexp.size();
+}
 
-    int k, q, j, l, n; //counters
+std::tuple<std::valarray<double>, std::valarray<double>> CFoo::resample() const {
+    return Resample(Iexp, Vexp, Inum, Vnum);
+}
 
-    int Nt, NV; //numbers of temperature and voltage steps
-
-    double I[10002], I1[10002];
-
-    float I_A[10002], I_As[10002];
-
-    double V[10002];
-
-    double Ib; //bias for electron cooling
-
-    double I0; //units of current
-
-    double Vstr, Vfin; //range of voltage
-
-    float Z; //heat exchange in normal metal in nW / (K^5 * micron^3)
-
-    double Delta, gamma; //energy gap and gap smearing
-
-    double E, dE, E1; //energy, eV
-
-    double int1, int2; //integrals
-
-    double Pbg; //background power, pW
-
-    double Te, dT, Ts; //electron and phonon temperature
-
-    double tau, Vg, tauE, tauC, T1, T2; //dimentionless variables
-
-    double tauold;
-
-    double Pe_p, Pabs, Pleak, Pheat, Pcool, P, Pcool1, Ps, Ps1, Pand; //for power
-
-    double Rsg, Rsg1; //subgap resistance of 1 SIN, kOhm
-
-    double Rleak; //leakage resistance of SIN
-
-    double Rsin; //normal resistance of single SIN junction
-
-    double Rn1, Rleak1, V1, V2, Vcur; //for thermometer junctions
-
-    double G, dPdT, dIdT, dIdV, dPdV, Sv, dPT, mm; //for noise
-
-    double dP, dI, dPdI; //for power integrals
-
-    double NEP, NEPs, NEPep, NEPa, NEPph; //noise equivalent power
-
-    double vn, in; //amplifier voltage and current noise
-
-    double Tp0, x, DeltaT;
-
-    double eps; //coefficient between Ps and Ts
-
-    double NoiA; //amplifier noise
-
-    float G_NIS, G_e; //thermal conductivity
-
-    float Wt; //transparency of barrier
-
-    float tm; //depairing energy
-
-    double I_A0, I_As0;
-
-    float ii; //coefficient for Andreev current
-
-    clock_t start, finish;
-
-    start = clock();
-
-    char c = 0;
+size_t CFoo::CEB_2eq_parallel_lite() {
+    std::chrono::time_point<std::chrono::steady_clock> start = std::chrono::steady_clock::now();
 
     // --------- known/guessed physical parameters
 
-    Pbg = par[0]; //incoming power for all structure, pW
+    // `bolometersInSeries` and `bolometersInParallel` may be of an integer type,
+    // but as they're used in floating-point operations, let them be `double`
+    const auto bolometersInSeries = par[15]; // number of bolometers in series
+    const auto bolometersInParallel = par[16]; // number of bolometers in parallel
+    const auto totalBolometersNumber = bolometersInSeries * bolometersInParallel;
 
-    beta = par[1]; //returning power ratio, <1
+    // incoming power for all structure [pW]
+    const double Pbg = par[0];
+    // returning power ratio, <1
+    const double beta = par[1];
+    // exponent for Te-ph, 7, 6, or 5
+    const double TephPOW = par[2];
+    // volume of the absorber [um³]
+    const double Vol = par[4];
+    // heat exchange in normal metal [nW/(K⁵×um³)]
+    const double Z = par[6];
+    // critical temperature [K]
+    const double Tc = par[8];
+    // normal resistance for 1 bolometer [Ohm]
+    double Rn = par[9] * bolometersInParallel / bolometersInSeries;
+    // leakage resistance per 1 bolometer [Ohm]
+    const double Rleak = par[10] * bolometersInParallel / bolometersInSeries;
+    // transparency of the barrier
+    const double Wt = par[11];
+    // depairing energy
+    const double tm = par[12];
+    // coefficient for Andreev current
+    const double ii = par[13];
+    // normal resistance of 1 absorber [Ohm]
+    const double Ra = par[14];
+    // phonon temperature [K]
+    const double Tp = par[17];
+    // voltage range end [V]
+    const double dVFinVg = par[18];
+    // voltage range start [V]
+    const double dVStartVg = par[19];
+    // voltage step [V]
+    const double dV = par[20];
 
-    TephPOW = par[2]; //exponent for Te-ph
+    // electron temperature to be found [K]
+    double Te = Tp;
+    // electron temperature in superconductor [K]
+    const double Ts = Tp;
 
-    // gamma = par[3]; //gap smearing, not used, should be 0
+    const double DeltaT = std::sqrt(1.0 - std::pow(Ts / Tc, 3.2));
+    // incoming power per 1 bolometer [pW]
+    const double dPbg = Pbg / totalBolometersNumber;
+    // energy gap [K], Vg[eV] = Tc * 1.764 * 86.25e-6
+    const double Delta = 1.764 * Tc;
 
-    Vol = par[4]; //volume of absorber, um^3
-
-    VolS = par[5]; //volume of superconductor, um^3
-
-    Z = par[6]; //heat exchange in normal metal, nW/(K^5*um^3)
-
-    ZS = par[7]; //sigma
-
-    Tc = par[8]; //critical temperature, K
-
-    Rn = par[9] / M * MP; //normal resistance for 1 bolometer, Ohm
-
-    Rleak = par[10] / M * MP; //leakage resistance for 1 bolometer, Ohm
-
-    Wt = par[11]; //transparency of barrier
-
-    tm = par[12]; //depairing energy
-
-    ii = par[13]; //coefficient for Andreev current
-
-    Ra = par[14]; //normal resistance for 1 absorber, Ohm
-
-    M = par[15]; //number of bolometers in series
-
-    MP = par[16]; //number of bolometers in parallel
-
-    Tp = par[17]; //phonon temperature, K
-
-    dVFinVg = par[18]; //voltage range end
-
-    dVStartVg = par[19]; //voltage range start
-
-    dV = par[20]; //voltage step, V
-
-    Te = Tp; //electron temperature, is to be found, K
-
-    Ts = Tp; //electron temperature in superconductor, K
-
-    //Ib = 1.4;								//bias current for electron cooling, nA
-
-    dPbg = Pbg / M / MP; //incoming power for 1 bolometer, pW
-
-    Delta = 1.764 * Tc; //in K, Vg[eV] = Tc * 1.764 * 86.25e-6
-
-    f3old = fopen("Te_old.txt", "w");
-    f3 = fopen("Te.txt", "r");
-    //f3 = fopen(cPbgTe, "r");
-
-    if (f3 != NULL) {
-        while (fscanf(f3, "%c", &c) != EOF)
-            fprintf(f3old, "%c", c);
-        fclose(f3);
+    // if there is a file named “Te.txt”, backup its content into “Te_old.txt”
+    if (std::filesystem::exists("Te.txt")) {
+        std::filesystem::rename("Te.txt", "Te_old.txt");
     }
-
-    fclose(f3old);
-
-    f2 = fopen("Noise.dat", "w");
-    f3 = fopen("Te.txt", "w");
-    f4 = fopen("NEP.dat", "w");
-    f5 = fopen("G.txt", "w");
-
-    fclose(f2);
-    fclose(f3);
-    fclose(f4);
-    fclose(f5);
 
     //---------- normalized constants
 
-    Rn = (Rn - Ra) / 2;
-    //Rleak=Rn/gamma;							//Ohm, is not needed if Gamma<>0
+    Rn = (Rn - Ra) / 2.0;
 
-    I0 = Delta / Rn * KBOL * 1e9;
+    const double I0 = 1e9 * (Delta / Rn * K); // [nA], units of current
 
-    Vg = Delta / 11604.505;
-    /*Vg = Delta * KBOL;*/
+    const double Vg = Delta * K; // dimentionless
+    std::clog << "Vg = " << Vg << std::endl;
 
-    printf("%lf\n", Vg);
-
-    tau = Ts / Delta;
-
-    tauE = Te / Delta;
+    const double tau = Ts / Delta; // dimentionless
+    double tauE = Te / Delta; // dimentionless
 
     //---------- calculation parameters
 
-    //voltage step, V
+    // initial voltage
+    const double Vfin = dVFinVg * Vg;
+    // final voltage
+    const double Vstr = dVStartVg * Vg;
 
-    Vfin = dVFinVg * Vg;
+    const auto NV = static_cast<size_t>(std::round((Vfin - Vstr) / dV)); // the number of voltage steps
+    if (!NV) {
+        throw std::length_error("No voltage steps to do");
+    }
 
-    Vstr = dVStartVg * Vg;
+    Inum.resize(NV - 1);
+    Vnum.resize(NV - 1);
 
-    NV = (Vfin - 0.0 * Vg) / dV;
+    std::valarray<double> V(NV + 1); // [V]
+    std::iota(begin(V), end(V), 0.0);
+    V = Vstr + (V * dV);
 
-    if (Inum == NULL)
-        Inum = new double[NV - 1];
+    std::ofstream file_Noise("Noise.txt");
+    if (!file_Noise) {
+        throw std::runtime_error("Unable to write \"file_Noise.txt\"");
+    }
+    std::ofstream file_Te("Te.txt");
+    if (!file_Te) {
+        throw std::runtime_error("Unable to write \"file_Te.txt\"");
+    }
+    std::ofstream file_NEP("NEP.txt");
+    if (!file_NEP) {
+        throw std::runtime_error("Unable to write \"NEP.txt\"");
+    }
+    std::ofstream file_G("G.txt");
+    if (!file_G) {
+        throw std::runtime_error("Unable to write \"G.txt\"");
+    }
 
-    if (Vnum == NULL)
-        Vnum = new double[NV - 1];
+    file_Noise
+            << "Voltage" << SEP
+            << "NOISEep" << SEP
+            << "NOISEs" << SEP
+            << "NOISEa" << SEP
+            << "NOISE" << SEP
+            << "NOISEph" << SEP
+            << "NOISE^2-NOISEph^2" << std::endl;
+    file_Te
+            << "Voltage" << SEP
+            << "Current" << SEP
+            << "Iqp" << SEP
+            << "Iand" << SEP
+            << "V/Rleak" << SEP
+            << "Te" << SEP
+            << "Ts" << SEP
+            << "DeltaT" << SEP
+            << "Pand" << SEP
+            << "Pleak" << SEP
+            << "Pabs" << SEP
+            << "Pcool" << std::endl;
+    file_NEP
+            << "Voltage" << SEP
+            << "Current" << SEP
+            << "NEPep" << SEP
+            << "NEPs" << SEP
+            << "NEPa" << SEP
+            << "NEP" << SEP
+            << "NEPph" << SEP
+            << "Sv" << SEP
+            << "NEP^2-NEPph^2" << std::endl;
+    file_G
+            << "Voltage" << SEP
+            << "Ge" << SEP
+            << "Gnis" << std::endl;
 
-    for (j = 0; j <= NV; j++)
-        V[j] = Vstr + ((j - 0) * dV); // = [V]
+    std::valarray<double> I(NV + 1);
+    std::valarray<double> I_A(NV + 1);
 
-    f2 = fopen("Noise.dat", "a");
-    f3 = fopen("Te.txt", "a");
-    f4 = fopen("NEP.dat", "a");
-    f5 = fopen("G.txt", "a");
-
-    fprintf(f2, "Voltage\tNOISEep\tNOISEs\tNOISEa\tNOISE\tNOISEph\tNOISE^2-NOISEph^2\n");
-    fprintf(f3, "Voltage\tCurrent\tIqp\tIand\tV/Rleak\tTe\tTs\tDeltaT\tPand\tPleak\tPabs\tPcool\n");
-    fprintf(f4, "Voltage\tCurrent\tNEPep\tNEPs\tNEPa\tNEP\tNEPph\tSv\tNEP^2-NEPph^2\n");
-    fprintf(f5, "Voltage\tGe\tGnis\n");
-
-    for (j = 1; j <= NV - 1; j++) //next voltage
+    for (size_t j = 1; j < NV; ++j) // next voltage; exclude edges
     {
-        for (n = 1; n <= 5; n++) //next interation
+        constexpr double dT = 0.005; // temperature step for derivative calculations
+
+        double Pabs, Pleak, Pcool, Ps, Pand; // for power
+
+        for (size_t n = 0; n < 5; ++n) // next interation
         {
-            T1 = 0;
+            double T1 = 0.0; // dimentionless
+            double T2 = 3.0 / 1.764; // dimentionless
 
-            T2 = 3 / 1.764;
-
-            tauE = (T1 + T2) / 2;
-
-            DeltaT = std::sqrt(1 - pow(Ts / Tc, float(3.2)));
-
-            for (l = 1; l <= 15; l++) //next iteration
+            for (size_t l = 0; l < 15; ++l) // next iteration
             {
-                tauE = (T1 + T2) / 2;
+                tauE = (T1 + T2) / 2.0;
 
-                I[j] = currentInt(DeltaT, V[j] / Vg, tau, tauE) * I0 + V[j] / Rleak * 1e9; //in nA
+                I[j] = currentInt(DeltaT, V[j] / Vg, tau, tauE) * I0 + 1e9 * (V[j] / Rleak); // [nA]
 
-                I_A[j] = ii * AndCurrent(DeltaT, V[j] / Vg, tauE, Wt, tm) * I0; //in nA
+                I_A[j] = ii * AndCurrent(DeltaT, V[j] / Vg, tauE, Wt, tm) * I0; // [nA]
 
-                Pe_p = Z * Vol
-                       * (std::pow(Tp, TephPOW /*7,6,5*/)
-                          - std::pow(tauE * Delta, TephPOW /*7,6,5*/))
-                       * 1e3; //pW
+                const double Pe_p = Z * Vol
+                                    * (std::pow(Tp, TephPOW)
+                                       - std::pow(tauE * Delta, TephPOW))
+                                    * 1e3; // [pW]
 
-                Pabs = I[j] * I[j] * Ra * 1e-6; //pW
+                Pabs = std::pow(I[j], 2) * Ra * 1e-6; // [pW]
 
-                Pleak = 2.0 * V[j] * V[j] / Rleak * 1e12; // pW, 2 because of 2 SIN
+                Pleak = numberOfSINs * std::pow(V[j], 2) / Rleak * 1e12; // [pW]
 
-                Pand = (I_A[j] * 1e-3) /*uA*/ * (I_A[j] * 1e-3) /*uA*/ * Ra /*Ohm*/
-                       + 2.0 * (I_A[j] * 1e3) /*pA*/ * V[j] /*V*/;          //pW, absorber + Andreev
+                Pand = std::pow(I_A[j] * 1e-3 /*[uA]*/, 2) * Ra /*[Ohm]*/
+                       + 2.0 * (I_A[j] * 1e3) /*[pA]*/ * V[j] /*[V]*/; // [pW], absorber + Andreev
 
-                Pcool = 1.0 * PowerCoolInt(DeltaT, V[j] / Vg, tau, tauE, &Ps) * Vg * Vg / Rn
-                        * 1e12; //pW, 0.1 - experimental parameter
+                std::tie(Pcool, Ps) = PowerCoolInt(DeltaT, V[j] / Vg, tau, tauE);
 
-                Ps = Ps * Vg * Vg / Rn * 1e12; //returning power from S to N
+                Pcool *= std::pow(Vg, 2) / Rn * 1e12; // [pW]
+                Ps *= std::pow(Vg, 2) / Rn * 1e12; // returning power from S to N
 
-                Pheat = Pe_p + 1.0 * Pabs + 1.0 * Pand + dPbg + 2.0 * beta * Ps
-                        + 1.0 * Pleak; // + Pand;
-
-                P = Pheat - 2.0 * Pcool;
-
-                if (P < 0) {
+                if (const double Pheat = Pe_p + Pabs + Pand + dPbg + 2.0 * beta * Ps + Pleak; Pheat < 2.0 * Pcool) {
                     T2 = tauE;
-                }
-
-                else {
+                } else {
                     T1 = tauE;
                 }
             }
         }
-        //DeltaT = 1; // !!!
 
         Te = tauE * Delta;
 
-        Ts = tau * Delta;
+        Inum[j - 1] = 1e-9 * (I[j] + I_A[j]) * bolometersInParallel;
+        Vnum[j - 1] = (2.0 * V[j] + 1e-9 * (I[j] + I_A[j]) * Ra) * bolometersInSeries;
 
-        DeltaT = std::sqrt(1 - pow(Ts / Tc, float(3.2)));
-
-        I[j] = currentInt(DeltaT, V[j] / Vg, tau, tauE) * I0 + V[j] / Rleak * 1e9;
-
-        I_A[j] = ii * AndCurrent(DeltaT, V[j] / Vg, tauE, Wt, tm) * I0;
-
-        fprintf(f3,
-                "%f\t%g\t%g\t%g\t%f\t%f\t%g\t%g\t%g\t%g\t%g\t%g\n",
-                M * (2 * V[j] + (I[j] * 1e-9 + 1.0e-9 * I_A[j]) * Ra),
-                MP * 1e-9 * (I[j] + I_A[j]),
-                I[j] * MP * 1e-9,
-                I_A[j] * MP * 1e-9,
-                (V[j] / Rleak * 1e9) * MP,
-                Te,
-                Ts,
-                DeltaT,
-                Pand,
-                Pleak,
-                Pabs,
-                Pcool);
-
-        printf("Voltage: %g Current: %g\n",
-               M * (2 * V[j] + (I[j] * 1e-9 + 1.0e-9 * I_A[j]) * Ra),
-               MP * 1e-9 * (I[j] + I_A[j]) /*, I[j] * MP * 1e-9, I_A[j] * MP * 1e-9, Pand, Pleak*/);
-
-        //fprintf(f4,"%f %f\n", M * (2 * V[j] + I[j] * Ra * 1e-9), 2 * Rsg);
-
-        Inum[j - 1] = MP * 1e-9 * (I[j] + I_A[j]);
-
-        Vnum[j - 1] = M * (2 * V[j] + ((I[j] + I_A[j]) * Ra * 1e-9));
+        file_Te
+                << Vnum[j - 1] << SEP
+                << Inum[j - 1] << SEP
+                << 1e-9 * I[j] * bolometersInParallel << SEP
+                << 1e-9 * I_A[j] * bolometersInParallel << SEP
+                << 1e9 * (V[j] / Rleak) * bolometersInParallel << SEP
+                << Te << SEP
+                << Ts << SEP
+                << DeltaT << SEP
+                << Pand << SEP
+                << Pleak << SEP
+                << Pabs << SEP
+                << Pcool << std::endl;
 
         //----- NEP ----------------------------------------------
 
-        dT = 0.005;
+        const double dPT = std::get<0>(PowerCoolInt(DeltaT, V[j] / Vg, tau, tauE + dT / Delta))
+                           - std::get<0>(PowerCoolInt(DeltaT, V[j] / Vg, tau, tauE - dT / Delta));
 
-        vn = (3.2e-9) * std::sqrt(2.0);      //V/sqrt(Hz), for 2 amp * sqrt(2) AD745 amplifier
-        in = (6.9e-15) * 1 / std::sqrt(2.0); //A/sqrt(Hz), for 2 amp * 1 / sqrt(2)
+        const double dPdT = 1e12 * (std::pow(Vg, 2) / Rn) * dPT / (2.0 * dT); // [pW/K]
 
-        //		vn = (8.0e-9) * sqrt(2.0);					//V/sqrt(Hz), for 2 amp * sqrt(2) OPA111 amplifier
-        //		in = (0.8e-15) * 1 / sqrt(2.0);					//A/sqrt(Hz), for 2 amp * 1 / sqrt(2)
+        const double dIdT = I0
+                            * (currentInt(DeltaT, V[j] / Vg, tau, tauE + dT / Delta)
+                               - currentInt(DeltaT, V[j] / Vg, tau, tauE - dT / Delta))
+                            / (2.0 * dT); // [nA/K]
 
-        //		vn = (0.9e-9) * sqrt(2.0);					//V/sqrt(Hz), for 2 amp * sqrt(2) AD797 amplifier
-        //		in = (2.0e-12) * 1 / sqrt(2.0);					//A/sqrt(Hz), for 2 amp * 1 / sqrt(2)
+        const double dIdV = I0
+                            * (currentInt(DeltaT, V[j + 1] / Vg, tau, tauE)
+                               + ii * AndCurrent(DeltaT, V[j + 1] / Vg, tauE, Wt, tm)
+                               - currentInt(DeltaT, V[j - 1] / Vg, tau, tauE)
+                               - ii * AndCurrent(DeltaT, V[j - 1] / Vg, tauE, Wt, tm))
+                            / (2.0 * dV); // [nA/V]
 
-        //		vn = (1.1e-9) * sqrt(2.0);					//V/sqrt(Hz), for 2 amp * sqrt(2) IFN146 amplifier
-        //		in = (0.3e-15) * 1 / sqrt(2.0);					//A/sqrt(Hz), for 2 amp * 1 / sqrt(2)
+        const double dPdV = std::pow(Vg, 2) / Rn * 1e12
+                            * (std::get<0>(PowerCoolInt(DeltaT, V[j + 1] / Vg, tau, tauE))
+                               - std::get<0>(PowerCoolInt(DeltaT, V[j - 1] / Vg, tau, tauE)))
+                            / (2.0 * dV); // [pW/V]
 
-        //		vn = (5.1e-9) * sqrt(2.0);					//V/sqrt(Hz), for 2 amp * sqrt(2) OPA1641 amplifier
-        //		in = (0.8e-15) * 1 / sqrt(2.0);					//A/sqrt(Hz), for 2 amp * 1 / sqrt(2)
+        // thermal conductivity
+        const double G_NIS = dPdT;
+        const double G_e = 5.0 * Z * Vol * std::pow(Te, 4) * 1e3; // [pW/K]
 
-        dPT = PowerCoolInt(DeltaT, V[j] / Vg, tau, tauE + dT / Delta, &Ps)
-              - PowerCoolInt(DeltaT, V[j] / Vg, tau, tauE - dT / Delta, &Ps);
+        const double G = G_e + numberOfSINs * (G_NIS - dIdT / dIdV * dPdV); // [pW/K]
 
-        dPdT = Vg * Vg / Rn * 1e12 * (dPT) / (2 * dT); //pW/K
+        const double Sv = -2.0 * dIdT / dIdV / G / bolometersInParallel; // [V/pW], for 1 bolo
 
-        dIdT = I0
-               * (currentInt(DeltaT, V[j] / Vg, tau, tauE + dT / Delta)
-                  - currentInt(DeltaT, V[j] / Vg, tau, tauE - dT / Delta))
-               / (2 * dT); //nA/K
+        const double NEPep = 10.0 * E * K * Z * Vol * (std::pow(Tp, TephPOW) + std::pow(Te, TephPOW)) * 1e3
+                             * 1e12; //^2 [pW²/Hz]
 
-        dIdV = (I0
-                * (currentInt(DeltaT, V[j + 1] / Vg, tau, tauE)
-                   + ii * AndCurrent(DeltaT, V[j + 1] / Vg, tauE, Wt, tm)
-                   - currentInt(DeltaT, V[j - 1] / Vg, tau, tauE)
-                   - ii * AndCurrent(DeltaT, V[j - 1] / Vg, tauE, Wt, tm)))
-               / (2 * dV); //nA/V
+        // amplifier noise
+        const double NoiA = std::pow(VOLTAGE_NOISE_2_AMPS, 2)
+                            + std::pow(
+                                CURRENT_NOISE_2_AMPS * (2.0 * 1e9 / dIdV + Ra) * bolometersInSeries /
+                                bolometersInParallel,
+                                2); // [V²/Hz]
 
-        dPdV = Vg * Vg / Rn * 1e12
-               * (PowerCoolInt(DeltaT, V[j + 1] / Vg, tau, tauE, &Ps)
-                  - PowerCoolInt(DeltaT, V[j - 1] / Vg, tau, tauE, &Ps))
-               / (2 * dV); //pW/V
-
-        G_NIS = dPdT;
-        G_e = 5 * Z * Vol * std::pow(Te, 4) * 1e3; //pW/K
-
-        G = G_e + 2 * (G_NIS - dIdT / dIdV * dPdV); //pW/K, '2' for 2 SINs
-
-        Sv = -2 * dIdT / dIdV / G; //V/pW, for 1 bolo
-
-        Sv = Sv / MP;
-
-        NEPep = 10 * EL * KBOL * Z * Vol * (std::pow(Tp, TephPOW) + std::pow(Te, TephPOW)) * 1e3
-                * 1e12; //^2 pW^2/Hz
-
-        NoiA = (vn * vn + std::pow(in * (2 * 1e9 / dIdV + Ra) * M / MP, 2)); //(V/sqrt(Hz))^2
-
-        NEPa = (NoiA) / Sv / Sv; //pW^2/Hz
+        const double NEPa = NoiA / std::pow(Sv, 2); // [pW²/Hz]
 
         //----- NEP SIN approximation ----------------------------
 
-        dI = 2 * EL * std::abs(I[j]) / std::pow(dIdV * Sv, 2) * 1e9; //pW^2/Hz
+        const double dI = 1e9 * (2.0 * E * std::abs(I[j]) / std::pow(dIdV * Sv, 2)); // [pW²/Hz]
 
-        dPdI = 2 * 2 * EL * Pcool / (dIdV * Sv)
-               * 1e9; //pW^2/Hz, second '2' is from comparison with integral
+        const double dPdI = 1e9 * (2.0 * 2.0 * E * Pcool / (dIdV * Sv));
+        // [pW^2/Hz], second '2' is from comparison with integral
 
-        mm = std::log(std::sqrt(2 * PI * KBOL * Te * Vg) / (2 * std::abs(I[j]) * Rn * 1e-9));
+        const double mm = std::log(std::sqrt(2.0 * M_PI * K * Te * Vg) / (2.0 * std::abs(I[j]) * Rn * 1e-9));
 
-        dP = (0.5 + mm * mm) * (KBOL * Te) * (KBOL * Te) * std::abs(I[j]) * EL * 1e-9
-             * 1e24; //pW^2/Hz
+        const double dP = (0.5 + std::pow(mm, 2)) * std::pow(K * Te, 2) * std::abs(I[j]) * E * 1e-9
+                          * 1e24; // [pW²/Hz]
 
-        NEPs = 2 * (dI - 2 * dPdI + dP); //pW^2/Hz, '2' for 2 SINs, all terms positive
+        const double NEPs = numberOfSINs * (dI - 2.0 * dPdI + dP); // [pW²/Hz], all terms positive
 
-        //fprintf(f5, "%g %g %g %g\n",  M * (2 * V[j] + I[j] * Ra * 1e-9), dI, 2 * dPdI, dP);
+        //fprintf(file_G, "%g %g %g %g\n",  M * (2 * V[j] + I[j] * Ra * 1e-9), dI, 2 * dPdI, dP);
 
         //----- NEP SIN integral ---------------------------------
-        /* 
+        /*
 		mm = NEPInt(DeltaT, V[j] / Vg, tau, tauE, &dI, &dP, &dPdI);
 
-		dI = EL * I0 * dI / std::pow(dIdV * Sv, 2) * 1e9;			//pW^2/Hz
-  
-		dPdI = dPdI / (dIdV * Sv) * EL * Vg * Vg / Rn * 1e12 * 1e9;	//pW^2/Hz
-  
-		dP = dP * Vg * Vg * Vg / Rn * EL * 1e24;			//pW^2/Hz 
-        
-		NEPs = 2 * (dI - 2 * dPdI + dP);				//pW^2/Hz, '2' for 2 SINs, all terms positive
-  
+		dI = EL * I0 * dI / std::pow(dIdV * Sv, 2) * 1e9;			// [pW²/Hz]
+
+		dPdI = dPdI / (dIdV * Sv) * EL * std::pow(Vg, 2) / Rn * 1e12 * 1e9;	// [pW²/Hz]
+
+		dP *= std::pow(Vg, 3) / Rn * EL * 1e24;			// [pW²/Hz]
+
+		NEPs = numberOfSINs * (dI - 2 * dPdI + dP);				// [pW²/Hz], all terms positive
+
 		fprintf(f9, "%g %g %g %g\n",  M * (2 * V[j] + I[j] * Ra * 1e-9), dI, 2 * dPdI, dP);
-*/
+        */
         //--------------------------------------------------------
 
-        NEPph = std::sqrt(M * MP * 2 * Pbg * 0 * 1e9 * HPLANCK * 1e-12
-                          + std::pow(M * MP * Pbg * 1e-12, 2) / 1e3 / 1e9); //W/sqrt(Hz), at 0 GHz
+        const double NEPph = 1e12 * std::sqrt(std::pow(1e-12 * Pbg * totalBolometersNumber, 2) / 1e3 / 1e9);
+        // [pW/sqrt(Hz)], at 0 GHz
 
-        //NEPph = sqrt(M * MP * 2 * Pbg * 350 * 1e9 * HPLANCK * 1e-12 + pow(M * MP * Pbg * 1e-12, 2) / 1.552 / 1e9);	//W/sqrt(Hz), at 350 GHz
+        // const double NEPph = 1e12 * std::sqrt(totalBolometersNumber * 2.0 * 1e9 * Pbg * 350.0 * 1e-12 * H + std::pow(1e-12 * Pbg * totalBolometersNumber, 2) / 1.552 / 1e9);	// [pW/sqrt(Hz)], at 350 GHz
 
-        NEPph = NEPph * 1e12; //pW
+        const double NEP = std::sqrt((NEPep + NEPs) * totalBolometersNumber + NEPa + std::pow(NEPph, 2));
+        //all squares
 
-        NEP = std::sqrt(M * MP * (NEPep + NEPs) + NEPa + NEPph * NEPph); //all squares
+        file_Noise
+                << (2.0 * V[j] + 1e-9 * I[j] * Ra) * bolometersInSeries << SEP
+                << 1e9 * std::sqrt(NEPep * totalBolometersNumber) * std::abs(Sv) << SEP
+                << 1e9 * std::sqrt(NEPs * totalBolometersNumber) * std::abs(Sv) << SEP
+                << 1e9 * std::sqrt(NoiA) << SEP
+                << 1e9 * NEP * std::abs(Sv) << SEP
+                << 1e9 * NEPph * std::abs(Sv) << SEP
+                << 1e9 * std::abs(Sv) * std::sqrt(std::pow(NEP, 2) - std::pow(NEPph, 2)) << std::endl;
 
-        fprintf(f2,
-                "%g\t%g\t%g\t%g\t%g\t%g\t%g\n",
-                M * (2 * V[j] + I[j] * Ra * 1e-9),
-                std::sqrt(M * MP * NEPep) * 1e9 * std::abs(Sv),
-                std::sqrt(M * MP * NEPs) * 1e9 * std::abs(Sv),
-                std::sqrt(NoiA) * 1e9,
-                NEP * 1e9 * std::abs(Sv),
-                NEPph * 1e9 * std::abs(Sv),
-                1e9 * std::abs(Sv) * std::sqrt(NEP * NEP - NEPph * NEPph));
+        file_NEP
+                << (2.0 * V[j] + 1e-9 * I[j] * Ra) * bolometersInSeries << SEP
+                << 1e-9 * I[j] * bolometersInParallel << SEP
+                << 1e-12 * std::sqrt(NEPep * totalBolometersNumber) << SEP
+                << 1e-12 * std::sqrt(NEPs * totalBolometersNumber) << SEP
+                << 1e-12 * std::sqrt(NEPa) << SEP
+                << 1e-12 * NEP << SEP
+                << 1e-12 * NEPph << SEP
+                << 1e12 * std::abs(Sv) << SEP
+                << 1e-12 * std::sqrt(std::pow(NEP, 2) - std::pow(NEPph, 2)) << std::endl;
 
-        fprintf(f4,
-                "%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\n",
-                M * (2 * V[j] + I[j] * Ra * 1e-9),
-                MP * 1e-9 * (I[j]),
-                std::sqrt(M * MP * NEPep) * 1e-12,
-                std::sqrt(M * MP * NEPs) * 1e-12,
-                std::sqrt(NEPa) * 1e-12,
-                NEP * 1e-12,
-                NEPph * 1e-12,
-                std::abs(Sv) * 1e12,
-                1e-12 * std::sqrt(NEP * NEP - NEPph * NEPph));
+        file_G
+                << (2.0 * V[j] + 1e-9 * (I[j] * Ra)) * bolometersInSeries << SEP
+                << G_e << SEP
+                << G_NIS << std::endl;
 
-        fprintf(f5, "%g\t%g\t%g\n", M * (2 * V[j] + I[j] * Ra * 1e-9), G_e, G_NIS);
-
-        printf("Sv: %g Te: %g NEPs: %g NEPt: %g\n\n",
-               std::abs(Sv) * 1e12,
-               Te,
-               std::sqrt(M * MP * NEPs) * 1e-12,
-               NEP * 1e-12);
-
-        //system("cls");
+        std::clog
+                << std::setw(static_cast<int>(std::ceil(std::log10(NV)))) << j << '/' << NV - 1 << ':' << SEP
+                << "Voltage: " << std::setw(12) << Vnum[j - 1] << SEP
+                << "Current: " << std::setw(12) << Inum[j - 1] << SEP
+                << "Sv: " << std::setw(12) << 1e12 * std::abs(Sv) << SEP
+                << "Te: " << std::setw(12) << Te << SEP
+                << "NEPs: " << std::setw(12) << 1e-12 * std::sqrt(NEPs * totalBolometersNumber) << SEP
+                << "NEPt: " << std::setw(12) << 1e-12 * NEP << std::endl;
     }
 
-    fclose(f2);
-    fclose(f3);
-    fclose(f4);
-    fclose(f5);
+    file_Noise.close();
+    file_Te.close();
+    file_NEP.close();
+    file_G.close();
 
-    finish = clock();
-    double sTime = (double) (finish - start) / CLOCKS_PER_SEC;
-    printf("\nTime spent: %f sec.", sTime);
+    std::clog
+            << "Time spent: " << std::chrono::duration<double>(std::chrono::steady_clock::now() - start)
+            << std::endl;
 
     return NV - 1;
 }

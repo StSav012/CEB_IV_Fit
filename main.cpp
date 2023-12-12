@@ -1,26 +1,28 @@
 #include <cmath>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <ctime>
-#include <limits>
+#include <chrono>
+#include <iostream>
+
+#include "constants.h"
 
 #include "cfoo.h"
 
-int main()
-{
-    //brent.bracket(0.0, dPbgPB, foo);
-    //GetDBStartPoint(par, "DB_300mK.txt");
-    clock_t begin = clock();
-    CFoo foo(0);
+int main() {
+    const std::chrono::time_point<std::chrono::steady_clock> beginning = std::chrono::steady_clock::now();
+    try {
+        CFoo foo(0);
+        foo.loadExperimentData(fname);
+        foo.CEB_2eq_parallel_lite();
 
-    foo.SeqFit(3);
-    printf("\nFinished.");
-    clock_t end = clock();
-    double time_spent = (double) (end - begin) / CLOCKS_PER_SEC;
-    printf("\n%f", time_spent);
+        auto [Irex, Vrex] = foo.resample();
 
-    double tmp = 0;
-    scanf("%lf", &tmp);
+        foo.SeqFit(1, Irex);
+    } catch (std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    std::clog << '\n' << "Finished." << std::endl;
+    std::clog << "Spent " << std::chrono::duration<double>(std::chrono::steady_clock::now() - beginning) << std::endl;
+
+    // std::getchar();
     return 0;
 }

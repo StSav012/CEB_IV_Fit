@@ -1,64 +1,30 @@
-#ifndef _CFOO_H_
-#define _CFOO_H_
+#ifndef CFOO_H
+#define CFOO_H
 
-class CFoo
-{
+#include <valarray>
+
+class CFoo {
+    const size_t parCount = 21;
+
+    std::valarray<double> Iexp, Vexp;
+    std::valarray<double> Inum, Vnum;
+
+    std::valarray<double> par;
+    std::valarray<bool> ToFit;
+    size_t iParNum;
+
 public:
-    long countexp, countnum;
-    double *Iexp, *Vexp, *Inum, *Vnum;
-    double *Irex, *Vrex;
-    double dMinimize;
-    double dVStartVg, dVFinVg, dV;
-
-    static const int iNumParams = 21;
-    double par[iNumParams];
-    bool ToFit[iNumParams];
-    int iParNum;
-    struct parametername;
-
-    double Pbg; //power for all structure
-
-    double dPbg; //power for 1 bolometer
-
-    double beta; //returned power
-
-    int TephPOW; //exponent for Te-ph
-
-    double gamma; //gap smearing, returned power
-
-    double Vol; //volume of absorber
-
-    double VolS; //volume of superconductor
-
-    double Z; //heat exchange in normal metal
-
-    double ZS; //sigma of superconductor
-
-    double Tc; //critical temperature of superconductor
-
-    double Rn; //normal resistance of bolometer
-
-    double Ra; //resistance of absorber
-
-    int M; //number of bolometers in series
-
-    int MP; //number of bolometers in parallel
-
-    double Tp; //phonon temperature
-
-    double Rleak; //leakage resistance of SIN
-
-    float Wt; //transparency of barter
-
-    float tm; //depairing energy
-
-    float ii; //coefficient for Andreev current
-
     double operator()(double dParam);
-    long CEB_2eq_parallel_lite(void);
-    void SeqFit(int iRunCount);
-    CFoo(int parnum);
-    ~CFoo();
+
+    size_t CEB_2eq_parallel_lite();
+
+    void SeqFit(size_t runCount, const std::valarray<double>& Irex);
+
+    size_t loadExperimentData(const std::string& filename, bool removeOffset = false);
+
+    [[nodiscard]] std::tuple<std::valarray<double>, std::valarray<double>> resample() const;
+
+    explicit CFoo(size_t parIndex);
 };
 
 #endif
