@@ -22,10 +22,10 @@ double current(const ScalarLike& v, const double tau) {
      *  `tau` is for temperature
      */
 
-    const double a0 = 1 + 0.375 * tau - 0.1171875 * std::pow(tau, 2);
+    const double a0 = 1.0 + 0.375 * tau - 0.1171875 * std::pow(tau, 2);
     const double a1 = tau * std::pow(a0, 2);
-    ScalarLike a2 = 1.0 + std::exp((std::abs(v) - 1) / tau - (1.15 + tau));
-    ScalarLike a3 = (std::pow(v, 2) - 1.0) / (1.0 + std::exp(-(std::pow(v, 2) - 1) / tau));
+    ScalarLike a2 = 1.0 + std::exp((std::abs(v) - 1.0) / tau - (1.15 + tau));
+    ScalarLike a3 = (std::pow(v, 2) - 1.0) / (1.0 + std::exp(-(std::pow(v, 2) - 1.0) / tau));
 
     ScalarLike s = (v >= 0.0) * 2.0 - 1.0;
 
@@ -92,7 +92,7 @@ double PowerCoolPiece(const ScalarLike& v, const double tau) {
      */
     const ScalarLike a0 = (1.0 - v) / tau;
     const ScalarLike tmp1 = 2.0 * std::exp(a0);
-    const ScalarLike tmp2 = std::exp(-2.5 * (a0 + 2));
+    const ScalarLike tmp2 = std::exp(-2.5 * (a0 + 2.0));
     const double PItau = M_PI * tau;
     const ScalarLike a1 = std::sqrt(2.0 * PItau) * ((1.0 - v) / (tmp1 + 1.28) + 0.5 * tau / (tmp1 + 0.64))
                           / (tmp2 + 1.0);
