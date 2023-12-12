@@ -9,7 +9,7 @@ class COff {
 public:
     COff(const std::valarray<double>& Iexp, const std::valarray<double>& Vexp);
 
-    double operator()(double dOffset) const;
+    double operator()(double offset) const;
 };
 
 #endif

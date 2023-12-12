@@ -14,64 +14,60 @@ COff::COff(const std::valarray<double>& Iexp, const std::valarray<double>& Vexp)
     Vref = Vexp;
 }
 
-double COff::operator()(const double dOffset) const {
+double COff::operator()(const double offset) const {
     /*
      *  Make an object of the class act like a callable
      *  
      *  TODO: describe what the call is doing.
      */
-    size_t lLowI = 0;
-    double tmp = std::abs(Iref[0]);
-    const std::valarray<double> Vofx = Vref - dOffset;
-    const std::valarray<double> Iofx = Iref;
     const size_t count = Iref.size();
-    for (size_t i = 0; i < count; i++) {
-        if (std::abs(Iref[i]) < tmp) {
-            lLowI = i;
-            tmp = std::abs(Iref[i]);
+    if ((Iref[std::slice(0, count - 1, 1)] >= Iref[std::slice(1, count - 1, 1)]).sum()) {
+        throw std::runtime_error("I doesn't rise monotonously");
+    }
+
+    const std::valarray<double> Vofx = Vref - offset;
+    const std::valarray<double> Iofx = Iref;
+
+    // find the index of the item closest to zero, but still positive
+    const std::valarray<double> absIofx = std::abs(Iofx);
+    size_t indexOfTheSmallestAbsIofx = 0;
+    double smallestAbsIofx = absIofx[indexOfTheSmallestAbsIofx];
+    for (auto pAbsIofxItem = begin(absIofx); pAbsIofxItem != end(absIofx); ++pAbsIofxItem) {
+        if (*pAbsIofxItem >= 0 && *pAbsIofxItem < smallestAbsIofx) {
+            indexOfTheSmallestAbsIofx = std::distance(pAbsIofxItem, begin(absIofx));
+            smallestAbsIofx = *pAbsIofxItem;
         }
     }
-    if (Iofx[lLowI] < 0)
-        ++lLowI;
-    const size_t lLengthPos = count - lLowI;
-    const size_t lLengthNeg = count - lLengthPos;
+
+    // split the IV curve into positive and negative branches
+    const size_t lLengthPos = count - indexOfTheSmallestAbsIofx;
+    const size_t lLengthNeg = indexOfTheSmallestAbsIofx;
     std::valarray<double> Vlow, Ilow, Vhigh, Ihigh;
     size_t lLengthLow, lLengthHigh;
     if (lLengthPos > lLengthNeg) {
+        // i.e., indexOfTheSmallestAbsIofx < count / 2
         lLengthHigh = lLengthPos;
         lLengthLow = lLengthNeg;
-        Vhigh.resize(lLengthHigh);
-        Ihigh.resize(lLengthHigh);
-        Vlow.resize(lLengthLow);
-        Ilow.resize(lLengthLow);
-        for (size_t i = 0; i < lLengthHigh; i++) {
-            Vhigh[i] = std::abs(Vofx[lLowI + i]);
-            Ihigh[i] = std::abs(Iofx[lLowI + i]);
-        }
-        for (size_t i = 0; i < lLengthLow; i++) {
-            Vlow[i] = std::abs(Vofx[lLowI - 1 - i]);
-            Ilow[i] = std::abs(Iofx[lLowI - 1 - i]);
-        }
+        Vhigh = Vofx[std::slice(indexOfTheSmallestAbsIofx, lLengthHigh, 1)];
+        Ihigh = Iofx[std::slice(indexOfTheSmallestAbsIofx, lLengthHigh, 1)];
+        Vlow = Vofx[std::slice(indexOfTheSmallestAbsIofx - 1, lLengthLow, -1)];
+        Ilow = Iofx[std::slice(indexOfTheSmallestAbsIofx - 1, lLengthLow, -1)];
     } else {
         lLengthHigh = lLengthNeg;
         lLengthLow = lLengthPos;
-        Vhigh.resize(lLengthHigh);
-        Ihigh.resize(lLengthHigh);
-        Vlow.resize(lLengthLow);
-        Ilow.resize(lLengthLow);
-        for (size_t i = 0; i < lLengthHigh; i++) {
-            Vhigh[i] = std::abs(Vofx[lLowI - 1 - i]);
-            Ihigh[i] = std::abs(Iofx[lLowI - 1 - i]);
-        }
-        for (size_t i = 0; i < lLengthLow; i++) {
-            Vlow[i] = std::abs(Vofx[lLowI + i]);
-            Ilow[i] = std::abs(Iofx[lLowI + i]);
-        }
+        Vhigh = Vofx[std::slice(indexOfTheSmallestAbsIofx - 1, lLengthHigh, -1)];
+        Ihigh = Iofx[std::slice(indexOfTheSmallestAbsIofx - 1, lLengthHigh, -1)];
+        Vlow = Vofx[std::slice(indexOfTheSmallestAbsIofx, lLengthLow, 1)];
+        Ilow = Iofx[std::slice(indexOfTheSmallestAbsIofx, lLengthLow, 1)];
     }
-    std::valarray<double> Irex(lLengthLow), Vrex(lLengthLow);
-    writeIV("test1.txt", Ilow, Vlow);
-    writeIV("test2.txt", Ihigh, Vhigh);
-    Resample(Vrex, Irex, Vhigh, Ihigh, Vlow, Ilow);
-    writeIV("test3.txt", Irex, Vrex);
-    return ChiSqHi(Vlow, Vrex);
+
+    writeIV("IV low.txt", Ilow, Vlow);
+    writeIV("IV high.txt", Ihigh, Vhigh);
+
+    // symmetrize the voltage points of the branches
+    auto [Irex, Vrex] = Resample(Ihigh, Vhigh, Ilow, Vlow);
+    writeIV("IV rex.txt", Irex, Vrex);
+
+    // compare the shortest branch with the resampled one
+    return ChiSqHi(Ilow, Irex);
 }

@@ -1,19 +1,19 @@
 #include <cmath>
-#include <ctime>
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <valarray>
 #include <vector>
 
-#include "coff.h"
+#include "constants.h"
 #include "mins.h"
 #include "utils.h"
 
-size_t GetExp(const std::string& fname,
-              std::valarray<double>& Iexp,
-              std::valarray<double>& Vexp,
-              const bool bRemOffset) {
+#include "coff.h"
+
+std::tuple<std::valarray<double>, std::valarray<double>> getExperimentalData(
+    const std::string& filename, const bool removeOffset) {
     /*
      *  Get experimental values `Iexp` and `Vexp` from file `fname`
      *
@@ -22,53 +22,49 @@ size_t GetExp(const std::string& fname,
 
     std::vector<double> vVexp;
     std::vector<double> vIexp;
-    try {
-        std::ifstream in;
-        in.open(fname, std::ifstream::in);
 
+    if (std::ifstream in(filename); in) {
         double tmpV, tmpI;
         while (!in.eof()) {
             in >> std::skipws >> tmpV >> tmpI;
             vVexp.push_back(tmpV);
             vIexp.push_back(tmpI);
         }
-    } catch (std::exception& e) {
-        std::cerr << "Error while reading experimental data: " << e.what() << std::endl;
-        getchar();
-        exit(0);
+        in.close();
+    } else {
+        throw std::runtime_error(std::format("Unable to read experimental data from \"{}\"", filename));
     }
 
-    std::clog << "Fitting for " << fname << " started!" << std::endl;
+    std::clog << "Fitting for " << std::quoted(filename) << " started!" << std::endl;
 
-    std::ofstream params;
-    params.open("fitparameters_new.txt", std::ofstream::app);
-    params << "Filename: " << fname << std::endl;
-    params.close();
+    if (std::ofstream params("fitparameters_new.txt", std::ios::app); params) {
+        params << "Filename: " << std::quoted(filename) << std::endl;
+        params.close();
+    } else {
+        throw std::runtime_error("Unable to append to \"fitparameters_new.txt\"");
+    }
 
     size_t count = std::min(vVexp.size(), vIexp.size());
-    Vexp = std::valarray<double>(vVexp.data(), count);
-    Iexp = std::valarray<double>(vIexp.data(), count);
+    auto Vexp = std::valarray<double>(vVexp.data(), count);
+    auto Iexp = std::valarray<double>(vIexp.data(), count);
 
-    if (bRemOffset) {
+    if (removeOffset) {
         double dOffset = 0;
         double dLBound = -0.0005;
         double dRBound = 0.0005;
-        COff Off(Iexp, Vexp);
-        std::tie(dOffset, std::ignore) = GoldenMinimize(Off, dLBound, dRBound, dOffset);
+        std::tie(dOffset, std::ignore) = GoldenMinimize(COff(Iexp, Vexp), dLBound, dRBound, dOffset);
         Vexp -= dOffset;
 
-        writeIV("IVoffset.txt", Iexp, Vexp);
+        writeIV("IV offset.txt", Iexp, Vexp);
     }
 
-    return count;
+    return std::make_tuple(Iexp, Vexp);
 }
 
-void Resample(std::valarray<double>& Irex,
-              std::valarray<double>& Vrex,
-              const std::valarray<double>& Iexp,
-              const std::valarray<double>& Vexp,
-              const std::valarray<double>& Inum,
-              const std::valarray<double>& Vnum) {
+std::tuple<std::valarray<double>, std::valarray<double>> Resample(const std::valarray<double>& Iexp,
+                                                                  const std::valarray<double>& Vexp,
+                                                                  const std::valarray<double>& Inum,
+                                                                  const std::valarray<double>& Vnum) {
     /*
      *  Resample the IV-curve to the specified range
      *
@@ -85,16 +81,17 @@ void Resample(std::valarray<double>& Irex,
 
     const size_t countnum = Vnum.size();
     const size_t countexp = Vexp.size();
-    Vrex = Vnum;
-    Irex.resize(countnum);
+    std::valarray<double> Irex(countnum);
+    std::valarray<double> Vrex = Vnum;
 
     size_t lLeft, lRight;
     for (size_t i = 0; i < countnum; ++i) {
         const double dCurVal = Vnum[i];
+        const std::valarray<double> ddCurVal = std::abs(Vnum[i] - Vexp);
         size_t lCurPos = 0;
-        double tmp = std::abs(dCurVal - Vexp[0]);
-        for (size_t j = 1; j < countexp; j++) {
-            if (double tmp1 = std::abs(dCurVal - Vexp[j]); tmp1 < tmp) {
+        double tmp = ddCurVal[lCurPos];
+        for (size_t j = 1; j < countexp; ++j) {
+            if (double tmp1 = ddCurVal[j]; tmp1 < tmp) {
                 tmp = tmp1;
                 lCurPos = j;
             }
@@ -108,17 +105,18 @@ void Resample(std::valarray<double>& Irex,
             lRight = lCurPos;
         }
 
-        if (lRight == 0)
+        if (lRight == 0) {
             Irex[i] = Iexp[0];
-        else if (lRight > countexp - 1)
+        } else if (lRight > countexp - 1) {
             Irex[i] = Iexp[countexp - 1];
-        else
+        } else {
             Irex[i] = Iexp[lLeft]
                       + (dCurVal - Vexp[lLeft]) * (Iexp[lRight] - Iexp[lLeft])
                       / (Vexp[lRight] - Vexp[lLeft]);
+        }
     }
 
-    writeIV("IVresampled.txt", Irex, Vrex);
+    return std::make_tuple(Irex, Vrex);
 }
 
 double ChiSq(const std::valarray<double>& Inum, const std::valarray<double>& Irex) {
@@ -249,19 +247,26 @@ void writeIV(const std::string& filename,
         throw std::length_error("I and V must be of the same size");
     }
 
-    if (std::ofstream f(filename.c_str(), std::ios::out); f) {
+    if (std::ofstream f(filename); f) {
         for (auto pv = begin(V), pi = begin(I); pv != end(V) && pi != end(I); ++pv, ++pi) {
-            f << *pv << ' ' << *pi << std::endl;
+            f << *pv << SEP << *pi << std::endl;
         }
         f.close();
+    } else {
+        throw std::runtime_error(std::format("Unable to write \"{}\"", filename));
     }
 }
 
-void writeConverg(const double x, const double f, const time_t start) {
-    std::clog << '\n' << "CURRENT XMIN = " << x << '\t' << "CHISQMIN = " << f << std::endl;
+void writeConverg(const double x, const double f, const std::chrono::time_point<std::chrono::steady_clock> start) {
+    std::clog << '\n' << "CURRENT XMIN = " << x << SEP << "CHISQMIN = " << f << std::endl;
 
     if (std::ofstream conv("converg.txt", std::ios::app); conv) {
-        conv << x << f << (double) std::difftime(time(nullptr), start) << std::endl;
+        conv
+                << x << SEP
+                << f << SEP
+                << std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count() << std::endl;
         conv.close();
+    } else {
+        throw std::runtime_error("Unable to append to \"converg.txt\"");
     }
 }

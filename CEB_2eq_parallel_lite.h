@@ -57,11 +57,13 @@ double currentInt(const double DT, const ScalarLike& v, const double tau, const 
     while (x <= inf) {
         constexpr double accuracy = 1e-6;
         const double a2 = std::sqrt(std::pow(x, 2) - DT2);
+        ScalarLike a0;
+        double a1;
+        ScalarLike i_step;
 
-        ScalarLike a0 = 1.0 / (std::exp((x - v1) / tauE) + 1.0);
-        double a1 = 1.0 / (std::exp(x / tau) + 1.0);
-
-        ScalarLike i_step = x / a2 * (a0 - a1);
+        a0 = 1.0 / (std::exp((x - v1) / tauE) + 1.0);
+        a1 = 1.0 / (std::exp(x / tau) + 1.0);
+        i_step = x / a2 * (a0 - a1);
         // accuracy check at every iteration
         if (std::abs(i_step) < accuracy)
             break;
@@ -90,19 +92,16 @@ double PowerCoolPiece(const ScalarLike& v, const double tau) {
      */
     const ScalarLike a0 = (1.0 - v) / tau;
     const ScalarLike tmp1 = 2.0 * std::exp(a0);
-    const ScalarLike tmp2 = std::exp(2.5 * (a0 + 2));
+    const ScalarLike tmp2 = std::exp(-2.5 * (a0 + 2));
     const double PItau = M_PI * tau;
-    const ScalarLike a1 = std::sqrt(2.0 * PItau) * ((1 - v) / (tmp1 + 1.28) + 0.5 * tau / (tmp1 + 0.64))
-                          / (1.0 / tmp2 + 1.0);
-    ScalarLike a3;
-    if (v - 1 - tau > 0) {
-        const ScalarLike a2 = std::sqrt(std::pow(v, 2) - 1.0);
-        a3 = 0.5 * (-v * a2 + std::log(v + a2) + std::pow(PItau, 2) / 3.0 * v / a2) / (tmp2 + 1.0);
-    } else {
-        a3 = 0.0;
-    }
+    const ScalarLike a1 = std::sqrt(2.0 * PItau) * ((1.0 - v) / (tmp1 + 1.28) + 0.5 * tau / (tmp1 + 0.64))
+                          / (tmp2 + 1.0);
 
-    return a1 + a3;
+    if (v - 1.0 > tau) {
+        const ScalarLike a2 = std::sqrt(std::pow(v, 2) - 1.0);
+        return a1 + 0.5 * (-v * a2 + std::log(v + a2) + std::pow(PItau, 2) / 3.0 * v / a2) / (1.0 / tmp2 + 1.0);
+    }
+    return a1;
 }
 
 template<class ScalarLike>
@@ -141,8 +140,6 @@ ScalarLike AndCurrent(const double DT, const ScalarLike& v, const double tauE, c
 
     ScalarLike i = 0.0;
 
-    //FILE *f9=fopen("SINi.dat","w");
-
     double x = 0.0; // energy
     while (x <= DT) {
         const double DT2x2 = DT2 - std::pow(x, 2);
@@ -151,12 +148,10 @@ ScalarLike AndCurrent(const double DT, const ScalarLike& v, const double tauE, c
         const double a2 = twoWt * sqrtDT2x2 / tm
                           / (std::pow(x * (twoWt - sqrtDT2x2 / DT), 2) + DT2x2 / std::pow(DT * tm, 2));
         i += DT / sqrtDT2x2 * da0a1 * a2;
-        //fprintf(f9,"%g %g\n", x, i);
         x += dx;
     }
     i *= dx;
     return i;
-    //fclose(f9);
 }
 
 template<class ScalarLike>
@@ -180,8 +175,6 @@ std::tuple<ScalarLike, ScalarLike> PowerCoolInt(const double DT, const ScalarLik
 
     ScalarLike po = 0.0; // power
     ScalarLike ps = 0.0; // SIN cooling power
-
-    //FILE *f8 = fopen("DOS.txt","w");  //density of states
 
     double x = DT + dx; // energy
     while (x <= inf) {

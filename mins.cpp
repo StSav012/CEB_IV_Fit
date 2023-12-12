@@ -1,5 +1,5 @@
 #include <cmath>
-#include <ctime>
+#include <chrono>
 #include <fstream>
 #include <functional>
 
@@ -30,7 +30,7 @@ void Bracketmethod::setABC(const double a, const double b, const double c) {
 }
 
 void Bracketmethod::bracket(const double a, const double b, const std::function<double(double)>& f) {
-    constexpr double GOLD = (std::sqrt(5.0) + 1.0) / 2.0;
+    const double GOLD = (std::sqrt(5.0) + 1.0) / 2.0;
     ax = a;
     bx = b;
     double fu;
@@ -88,8 +88,8 @@ void Bracketmethod::bracket(const double a, const double b, const std::function<
 std::tuple<double, double> GoldenMinimize(const std::function<double(double)>& f,
                                           const double limit1, const double limit2,
                                           const double initialGuess, const double tolerance) {
-    const time_t start = time(nullptr);
-    constexpr double R = (std::sqrt(5.0) - 1.0) / 2.0, C = 1.0 - R;
+    const std::chrono::time_point<std::chrono::steady_clock> start = std::chrono::steady_clock::now();
+    const double R = (std::sqrt(5.0) - 1.0) / 2.0, C = 1.0 - R;
     double x1, x2;
     double x0 = limit1;
     double x3 = limit2;
@@ -107,12 +107,12 @@ std::tuple<double, double> GoldenMinimize(const std::function<double(double)>& f
             shft3(x0, x1, x2, R * x2 + C * x3);
             shft2(f1, f2, f(x2));
             writeConverg(x2, f2, start);
-            //getch();
+            // std::getchar();
         } else {
             shft3(x3, x2, x1, R * x1 + C * x0);
             shft2(f2, f1, f(x1));
             writeConverg(x1, f1, start);
-            //getch();
+            // std::getchar();
         }
     }
     if (f1 < f2) {
@@ -126,7 +126,7 @@ std::tuple<double, double> BrentMinimize(const std::function<double(double)>& f,
                                          const double initialGuess, const double tolerance) {
     constexpr int ITMAX = 100;
     constexpr double ZEPS = std::numeric_limits<double>::epsilon() * 1.0e-3;
-    constexpr double C = 1.0 - (std::sqrt(5.0) - 1.0) / 2.0;
+    const double C = 1.0 - (std::sqrt(5.0) - 1.0) / 2.0;
 
     double d = 0.0, fv, fx;
     double tol1, u, v, w;
@@ -136,7 +136,7 @@ std::tuple<double, double> BrentMinimize(const std::function<double(double)>& f,
     double b = std::max(limit1, limit2);
     double x = w = v = initialGuess;
     double fw = fv = fx = f(x);
-    const time_t start = time(nullptr);
+    const std::chrono::time_point<std::chrono::steady_clock> start = std::chrono::steady_clock::now();
     for (int iter = 0; iter < ITMAX; ++iter) {
         const double xm = 0.5 * (a + b);
         double tol2 = 2.0 * (tol1 = tolerance * std::abs(x) + ZEPS);
