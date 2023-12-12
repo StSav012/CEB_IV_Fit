@@ -25,7 +25,7 @@ CFoo::CFoo(size_t parIndex) {
 
     if (std::ifstream parfile("startparams.txt"); parfile) {
         std::string parname;
-        for (int i = 0; i < parCount; ++i) {
+        for (size_t i = 0; i < parCount; ++i) {
             parfile >> std::skipws >> parname >> par[i] >> ToFit[i];
 
             std::clog << std::left << std::setw(18) << std::format("{} = {},", parname, par[i])
