@@ -84,7 +84,12 @@ CMakeLists.txt.user*
 # Execution results
 /fitparameters_new.txt
 /G.txt
-/NEP.dat
-/Noise.dat
+/NEP.txt
+/Noise.txt
 /Te.txt
 /Te_old.txt
+/converg.txt
+/IV low.txt
+/IV high.txt
+/IV rex.txt
+/IV offset.txt
