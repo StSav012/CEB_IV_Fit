@@ -6,7 +6,6 @@
 #define CEB_2EQ_PARALLEL_LITE_H
 
 #include <cmath>
-#include <ctime>
 #include <tuple>
 
 #include "constants.h"
