@@ -53,7 +53,7 @@ double currentInt(const double DT, const ScalarLike& v, const double tau, const 
 
     ScalarLike pos_i = 0.0, neg_i = 0.0;
 
-    double x = DT; // energy
+    double x = DT + dx; // energy
     while (x <= inf) {
         constexpr double accuracy = 1e-6;
         const double a2 = std::sqrt(std::pow(x, 2) - DT2);
@@ -183,7 +183,7 @@ std::tuple<ScalarLike, ScalarLike> PowerCoolInt(const double DT, const ScalarLik
 
     //FILE *f8 = fopen("DOS.txt","w");  //density of states
 
-    double x = DT; // energy
+    double x = DT + dx; // energy
     while (x <= inf) {
         double x2 = std::pow(x, 2);
         double a = std::sqrt(x2 - DT2);
