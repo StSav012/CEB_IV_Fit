@@ -3,13 +3,12 @@
 #include <iostream>
 
 #include "constants.h"
-
-#include "cfoo.h"
+#include "IVParamFitter.h"
 
 int main() {
     const std::chrono::time_point<std::chrono::steady_clock> beginning = std::chrono::steady_clock::now();
     try {
-        CFoo foo(0);
+        IVParamFitter foo(0);
         foo.loadExperimentData(fname);
         foo.CEB_2eq_parallel_lite();
 

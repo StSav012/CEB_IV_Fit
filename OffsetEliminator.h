@@ -3,11 +3,11 @@
 
 #include <valarray>
 
-class COff {
+class OffsetEliminator {
     std::valarray<double> Iref, Vref;
 
 public:
-    COff(const std::valarray<double>& Iexp, const std::valarray<double>& Vexp);
+    OffsetEliminator(const std::valarray<double>& Iexp, const std::valarray<double>& Vexp);
 
     double operator()(double offset) const;
 };
