@@ -9,8 +9,8 @@ int main() {
     const std::chrono::time_point<std::chrono::steady_clock> beginning = std::chrono::steady_clock::now();
     try {
         IVParamFitter foo;
-        foo.loadExperimentData(fname);
-        foo.CEB_2eq_parallel_lite();
+        foo.loadExperimentData(DATA_FILE_NAME);
+        foo.computeCEBProperties();
 
         auto [Irex, Vrex] = foo.resample();
 

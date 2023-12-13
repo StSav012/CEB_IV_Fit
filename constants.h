@@ -8,7 +8,7 @@
  *  Format: two columns (voltage (V), current(A)).
  *  Decimal delimiter: .
  */
-const std::string fname = "SINS1_53_240_303_mK.txt";
+const std::string DATA_FILE_NAME = "SINS1_53_240_303_mK.txt";
 
 // CSV file delimiter
 constexpr char SEP = '\t';
@@ -39,6 +39,9 @@ constexpr double H = 6.62607015e-34; // exact,                 [J / Hz]
 constexpr double HBAR = H / (2.0 * M_PI); //                   [J / Hz]
 constexpr double K = 1.380649e-23 / E; // exact,               [eV / K]
 
+// coefficient follows from BCS theory (TODO: check for which metals)
+constexpr double BCS_INTEGRAL = 1.764; // TODO: source?
+
 #define THREADS 56
 
 /*
@@ -52,7 +55,7 @@ constexpr double INTEGRATION_SCALE = 0.2e-3;
 // the large enough value
 constexpr double ESSENTIALLY_INFINITY_SCALE = 20.0;
 
-constexpr auto numberOfSINs = 2.0;
+constexpr auto NUMBER_OF_SINS_IN_CEB = 2.0;
 
 /*
  *  Voltage and current noise for some amplifiers
