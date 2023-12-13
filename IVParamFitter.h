@@ -16,7 +16,7 @@ class IVParamFitter {
 public:
     double operator()(double dParam);
 
-    size_t CEB_2eq_parallel_lite();
+    size_t computeCEBProperties();
 
     void SeqFit(size_t runCount, const std::valarray<double>& Irex);
 

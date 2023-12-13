@@ -35,22 +35,25 @@ double current(const ScalarLike& v, const double tau) {
 }
 
 template<class ScalarLike>
-double currentInt(const double DT, const ScalarLike& v, const double tau, const double tauE) {
+double currentIntegral(const double DT, const ScalarLike& v, const double tau, const double tauE) {
     /*
      * Compute the current using exact integral, rectangle method
+     *
+     * @vshampor: This is probably a function to calculate the integral value in dimensionless units
+     *  and parameters should be renamed accordingly to move the physical meaning out of this function's params to
+     *  a position higher in code
      *
      * `DT` is delta (energy gap),
      * `v` is voltage,
      * `tau` is for temperature,
      * `tauE` is for electron temperature
     */
-
     const double dx = INTEGRATION_SCALE * DT;
     const double inf = ESSENTIALLY_INFINITY_SCALE * DT;
     const double DT2 = std::pow(DT, 2);
     const ScalarLike v1 = std::abs(v);
 
-    ScalarLike pos_i = 0.0, neg_i = 0.0;
+    ScalarLike i = 0.0;
 
     double x = DT + dx; // energy
     while (x <= inf) {
@@ -66,7 +69,7 @@ double currentInt(const double DT, const ScalarLike& v, const double tau, const 
         // accuracy check at every iteration
         if (std::abs(i_step) < accuracy)
             break;
-        pos_i += i_step;
+        i += i_step;
 
         a0 = 1.0 / (std::exp((-x - v1) / tauE) + 1.0);
         a1 = 1.0 / (std::exp(-x / tau) + 1.0);
@@ -74,14 +77,14 @@ double currentInt(const double DT, const ScalarLike& v, const double tau, const 
         // accuracy check at every iteration
         if (std::abs(i_step) < accuracy)
             break;
-        neg_i += i_step;
+        i += i_step;
 
         x += dx;
     }
 
     ScalarLike s = (v >= 0.0) * 2.0 - 1.0;
 
-    return (pos_i + neg_i) * dx * s;
+    return i * dx * s;
 }
 
 template<class ScalarLike>
