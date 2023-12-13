@@ -70,7 +70,7 @@ void IVParamFitter::SeqFit(size_t runCount, const std::valarray<double>& Irex) {
         }
         std::ranges::shuffle(ParSeq, generator);
 
-        double fmin;
+        double fmin = NAN;
         for (size_t j: ParSeq) {
             parameterIndex = j;
             std::tie(par[parameterIndex], fmin) = GoldenMinimize(
