@@ -3,7 +3,7 @@
 
 #include <valarray>
 
-class CFoo {
+class IVParamFitter {
     const size_t parCount = 21;
 
     std::valarray<double> Iexp, Vexp;
@@ -24,7 +24,7 @@ public:
 
     [[nodiscard]] std::tuple<std::valarray<double>, std::valarray<double>> resample() const;
 
-    explicit CFoo(size_t parIndex);
+    explicit IVParamFitter(size_t parIndex);
 };
 
 #endif

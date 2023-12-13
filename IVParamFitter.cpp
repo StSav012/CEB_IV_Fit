@@ -7,14 +7,14 @@
 #include <string>
 #include <vector>
 
-#include "CEB_2eq_parallel_lite.h"
 #include "constants.h"
-#include "mins.h"
 #include "utils.h"
+#include "CEBNumericModel.h"
+#include "MinimizationAlgorithms.h"
 
-#include "cfoo.h"
+#include "IVParamFitter.h"
 
-CFoo::CFoo(size_t parIndex) {
+IVParamFitter::IVParamFitter(size_t parIndex) {
     /*
      *  Set the base parameters for fitting
      */
@@ -38,7 +38,7 @@ CFoo::CFoo(size_t parIndex) {
     }
 }
 
-double CFoo::operator()(const double dParam) {
+double IVParamFitter::operator()(const double dParam) {
     par[iParNum] = dParam;
 
     CEB_2eq_parallel_lite();
@@ -47,7 +47,7 @@ double CFoo::operator()(const double dParam) {
     return ChiSqDer(Vnum, Inum, Irex);
 }
 
-void CFoo::SeqFit(size_t runCount, const std::valarray<double>& Irex) {
+void IVParamFitter::SeqFit(size_t runCount, const std::valarray<double>& Irex) {
     /*
      *  Fit using Golden method
      */
@@ -97,7 +97,7 @@ void CFoo::SeqFit(size_t runCount, const std::valarray<double>& Irex) {
     }
 }
 
-size_t CFoo::loadExperimentData(const std::string& filename, const bool removeOffset) {
+size_t IVParamFitter::loadExperimentData(const std::string& filename, const bool removeOffset) {
     std::tie(Iexp, Vexp) = getExperimentalData(filename, removeOffset);
     if (Iexp.size() != Vexp.size()) {
         throw std::length_error("Experimental I and V must be of the same size");
@@ -105,11 +105,11 @@ size_t CFoo::loadExperimentData(const std::string& filename, const bool removeOf
     return Iexp.size();
 }
 
-std::tuple<std::valarray<double>, std::valarray<double>> CFoo::resample() const {
+std::tuple<std::valarray<double>, std::valarray<double>> IVParamFitter::resample() const {
     return Resample(Iexp, Vexp, Inum, Vnum);
 }
 
-size_t CFoo::CEB_2eq_parallel_lite() {
+size_t IVParamFitter::CEB_2eq_parallel_lite() {
     std::chrono::time_point<std::chrono::steady_clock> start = std::chrono::steady_clock::now();
 
     // --------- known/guessed physical parameters

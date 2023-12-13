@@ -3,9 +3,9 @@
 
 #include "utils.h"
 
-#include "coff.h"
+#include "OffsetEliminator.h"
 
-COff::COff(const std::valarray<double>& Iexp, const std::valarray<double>& Vexp) {
+OffsetEliminator::OffsetEliminator(const std::valarray<double>& Iexp, const std::valarray<double>& Vexp) {
     if (Iexp.size() != Vexp.size()) {
         throw std::length_error("I and V must be of the same size");
     }
@@ -14,7 +14,7 @@ COff::COff(const std::valarray<double>& Iexp, const std::valarray<double>& Vexp)
     Vref = Vexp;
 }
 
-double COff::operator()(const double offset) const {
+double OffsetEliminator::operator()(const double offset) const {
     /*
      *  Make an object of the class act like a callable
      *  

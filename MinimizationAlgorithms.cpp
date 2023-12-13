@@ -3,8 +3,8 @@
 #include <fstream>
 #include <functional>
 
-#include "mins.h"
 #include "utils.h"
+#include "MinimizationAlgorithms.h"
 
 static void shft2(double& a, double& b, const double c) {
     a = b;

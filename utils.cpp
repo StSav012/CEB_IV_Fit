@@ -7,10 +7,10 @@
 #include <vector>
 
 #include "constants.h"
-#include "mins.h"
 #include "utils.h"
+#include "MinimizationAlgorithms.h"
 
-#include "coff.h"
+#include "OffsetEliminator.h"
 
 std::tuple<std::valarray<double>, std::valarray<double>> getExperimentalData(
     const std::string& filename, const bool removeOffset) {
@@ -52,7 +52,7 @@ std::tuple<std::valarray<double>, std::valarray<double>> getExperimentalData(
         double dOffset = 0;
         double dLBound = -0.0005;
         double dRBound = 0.0005;
-        std::tie(dOffset, std::ignore) = GoldenMinimize(COff(Iexp, Vexp), dLBound, dRBound, dOffset);
+        std::tie(dOffset, std::ignore) = GoldenMinimize(OffsetEliminator(Iexp, Vexp), dLBound, dRBound, dOffset);
         Vexp -= dOffset;
 
         writeIV("IV offset.txt", Iexp, Vexp);
