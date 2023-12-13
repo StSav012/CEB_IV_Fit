@@ -38,7 +38,7 @@ std::tuple<std::valarray<double>, std::valarray<double>> getExperimentalData(
     std::clog << "Fitting for " << std::quoted(filename) << " started!" << std::endl;
 
     if (std::ofstream params("fitparameters_new.txt", std::ios::app); params) {
-        params << "Filename: " << std::quoted(filename) << std::endl;
+        params << "data source = " << std::quoted(filename) << std::endl;
         params.close();
     } else {
         throw std::runtime_error("Unable to append to \"fitparameters_new.txt\"");
