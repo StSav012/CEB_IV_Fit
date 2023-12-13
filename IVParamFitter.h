@@ -1,17 +1,17 @@
 #ifndef CFOO_H
 #define CFOO_H
 
+#include <string>
+#include <unordered_map>
 #include <valarray>
 
 class IVParamFitter {
-    const size_t parCount = 21;
-
     std::valarray<double> Iexp, Vexp;
     std::valarray<double> Inum, Vnum;
 
-    std::valarray<double> par;
-    std::valarray<bool> ToFit;
-    size_t parameterIndex;
+    std::unordered_map<std::string, double> par;
+    std::unordered_map<std::string, bool> ToFit;
+    std::string parameterName;
 
 public:
     double operator()(double dParam);
@@ -24,7 +24,7 @@ public:
 
     [[nodiscard]] std::tuple<std::valarray<double>, std::valarray<double>> resample() const;
 
-    explicit IVParamFitter(size_t parIndex);
+    explicit IVParamFitter();
 };
 
 #endif

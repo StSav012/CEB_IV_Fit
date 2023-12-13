@@ -8,7 +8,7 @@
 int main() {
     const std::chrono::time_point<std::chrono::steady_clock> beginning = std::chrono::steady_clock::now();
     try {
-        IVParamFitter foo(0);
+        IVParamFitter foo;
         foo.loadExperimentData(fname);
         foo.CEB_2eq_parallel_lite();
 

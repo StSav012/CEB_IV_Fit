@@ -15,32 +15,32 @@
 
 #include "IVParamFitter.h"
 
-IVParamFitter::IVParamFitter(size_t parIndex) {
+IVParamFitter::IVParamFitter() {
     /*
      *  Set the base parameters for fitting
      */
-    par.resize(parCount);
-    ToFit.resize(parCount);
-
-    parameterIndex = parIndex;
-
     if (std::ifstream parfile("startparams.txt"); parfile) {
         std::string parname;
-        for (size_t i = 0; i < parCount; ++i) {
-            parfile >> std::skipws >> parname >> par[i] >> ToFit[i];
+        double parvalue;
+        bool parfit;
+        while (!parfile.eof()) {
+            parfile >> std::skipws >> parname >> parvalue >> parfit;
 
-            std::clog << std::left << std::setw(18) << std::format("{} = {},", parname, par[i])
-                    << std::internal << "to fit = " << std::boolalpha << ToFit[i]
+            par[parname] = parvalue;
+            ToFit[parname] = parfit;
+
+            std::clog << std::left << std::setw(18) << std::format("{} = {},", parname, parvalue)
+                    << std::internal << "to fit = " << std::boolalpha << parfit
                     << std::endl;
         }
         parfile.close();
     } else {
-        throw std::runtime_error("Can't read `startparams.txt`");
+        throw std::runtime_error("Can't read \"startparams.txt\"");
     }
 }
 
 double IVParamFitter::operator()(const double dParam) {
-    par[parameterIndex] = dParam;
+    par[parameterName] = dParam;
 
     CEB_2eq_parallel_lite();
     auto [Irex, Vrex] = resample();
@@ -48,7 +48,7 @@ double IVParamFitter::operator()(const double dParam) {
     return ChiSqDer(Vnum, Inum, Irex);
 }
 
-void IVParamFitter::SeqFit(size_t runCount, const std::valarray<double>& Irex) {
+void IVParamFitter::SeqFit(const size_t runCount, const std::valarray<double>& Irex) {
     /*
      *  Fit using Golden method
      */
@@ -56,35 +56,45 @@ void IVParamFitter::SeqFit(size_t runCount, const std::valarray<double>& Irex) {
     std::random_device r;
     std::default_random_engine generator(r());
 
-    writeConverg(par[parameterIndex], ChiSq(Inum, Irex), std::chrono::steady_clock::now());
+    writeConverg(par[parameterName], ChiSq(Inum, Irex), std::chrono::steady_clock::now());
 
     for (size_t run = 0; run < runCount; ++run) {
         std::clog << "SeqFit run " << run << std::endl;
 
-        std::vector<size_t> ParSeq;
-        for (size_t j = 0; j < parCount; ++j) {
-            if (!ToFit[j]) {
-                continue;
+        std::vector<std::string> ParSeq;
+        for (const auto& [key, value]: ToFit) {
+            if (value) {
+                ParSeq.push_back(key);
             }
-            ParSeq.push_back(j);
         }
         std::ranges::shuffle(ParSeq, generator);
 
         double fmin = NAN;
-        for (size_t j: ParSeq) {
-            parameterIndex = j;
-            std::tie(par[parameterIndex], fmin) = GoldenMinimize(
+        for (auto& parname: ParSeq) {
+            parameterName = parname;
+            std::tie(par[parameterName], fmin) = GoldenMinimize(
                 *this,
-                0.5 * par[parameterIndex], 2.0 * par[parameterIndex],
-                1.0 * par[parameterIndex],
+                0.5 * par[parameterName], 2.0 * par[parameterName],
+                1.0 * par[parameterName],
                 1e-3
             );
         }
-        if (std::fstream params("fitparameters_new.txt", std::fstream::app); params) {
-            for (const auto p: par)
-                params << p << SEP;
-            params << fmin << std::endl;
+
+        // store the parameters after minimization and the result
+        bool appendNewLine = std::filesystem::exists("fitparameters_new.txt")
+                             && std::filesystem::file_size("fitparameters_new.txt");
+        if (std::fstream params("fitparameters_new.txt", std::ios::app); params) {
+            if (appendNewLine) {
+                params << std::endl;
+            }
+            params << std::format("time = {}", std::chrono::system_clock::now()) << std::endl;
+            for (const auto& [parname, parvalue]: par)
+                params << std::format("{} = {} ({})", parname, parvalue,
+                                      ToFit[parname] ? std::string("fit") : std::string("skip")) << std::endl;
+            params << std::format("fmin = {}", fmin) << std::endl;
             params.close();
+        } else {
+            throw std::runtime_error("Unable to append to \"fitparameters_new.txt\"");
         }
     }
 }
@@ -108,42 +118,42 @@ size_t IVParamFitter::CEB_2eq_parallel_lite() {
 
     // `bolometersInSeries` and `bolometersInParallel` may be of an integer type,
     // but as they're used in floating-point operations, let them be `double`
-    const auto bolometersInSeries = par[15]; // number of bolometers in series
-    const auto bolometersInParallel = par[16]; // number of bolometers in parallel
+    const auto bolometersInSeries = par["M"]; // number of bolometers in series
+    const auto bolometersInParallel = par["MP"]; // number of bolometers in parallel
     const auto totalBolometersNumber = bolometersInSeries * bolometersInParallel;
 
     // incoming power for all structure [pW]
-    const double Pbg = par[0];
+    const double Pbg = par["Pbg"];
     // returning power ratio, <1
-    const double beta = par[1];
+    const double beta = par["beta"];
     // exponent for Te-ph, 7, 6, or 5
-    const double TephPOW = par[2];
+    const double TephPOW = par["TephPOW"];
     // volume of the absorber [um³]
-    const double Vol = par[4];
+    const double Vol = par["Vol"];
     // heat exchange in normal metal [nW/(K⁵×um³)]
-    const double Z = par[6];
+    const double Z = par["Z"];
     // critical temperature [K]
-    const double Tc = par[8];
+    const double Tc = par["Tc"];
     // normal resistance for 1 bolometer [Ohm]
-    double Rn = par[9] * bolometersInParallel / bolometersInSeries;
+    double Rn = par["Rn"] * bolometersInParallel / bolometersInSeries;
     // leakage resistance per 1 bolometer [Ohm]
-    const double Rleak = par[10] * bolometersInParallel / bolometersInSeries;
+    const double Rleak = par["Rleak"] * bolometersInParallel / bolometersInSeries;
     // transparency of the barrier
-    const double Wt = par[11];
+    const double Wt = par["Wt"];
     // depairing energy
-    const double tm = par[12];
+    const double tm = par["tm"];
     // coefficient for Andreev current
-    const double ii = par[13];
+    const double ii = par["ii"];
     // normal resistance of 1 absorber [Ohm]
-    const double Ra = par[14];
+    const double Ra = par["Ra"];
     // phonon temperature [K]
-    const double Tp = par[17];
+    const double Tp = par["Tp"];
     // voltage range end [V]
-    const double dVFinVg = par[18];
+    const double dVFinVg = par["dVFinVg"];
     // voltage range start [V]
-    const double dVStartVg = par[19];
+    const double dVStartVg = par["dVStartVg"];
     // voltage step [V]
-    const double dV = par[20];
+    const double dV = par["dV"];
 
     // electron temperature to be found [K]
     double Te = Tp;
