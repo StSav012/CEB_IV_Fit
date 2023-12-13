@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -21,7 +22,7 @@ IVParamFitter::IVParamFitter(size_t parIndex) {
     par.resize(parCount);
     ToFit.resize(parCount);
 
-    iParNum = parIndex;
+    parameterIndex = parIndex;
 
     if (std::ifstream parfile("startparams.txt"); parfile) {
         std::string parname;
@@ -39,7 +40,7 @@ IVParamFitter::IVParamFitter(size_t parIndex) {
 }
 
 double IVParamFitter::operator()(const double dParam) {
-    par[iParNum] = dParam;
+    par[parameterIndex] = dParam;
 
     CEB_2eq_parallel_lite();
     auto [Irex, Vrex] = resample();
@@ -55,38 +56,29 @@ void IVParamFitter::SeqFit(size_t runCount, const std::valarray<double>& Irex) {
     std::random_device r;
     std::default_random_engine generator(r());
 
-    writeConverg(par[iParNum], ChiSq(Inum, Irex), std::chrono::steady_clock::now());
+    writeConverg(par[parameterIndex], ChiSq(Inum, Irex), std::chrono::steady_clock::now());
 
     for (size_t run = 0; run < runCount; ++run) {
         std::clog << "SeqFit run " << run << std::endl;
 
-        std::vector<int> ParSeq(parCount);
-        std::vector<int> Tmp(parCount);
-
-        // fill `Tmp` with a sequence of ints from 0 to (iNumParams - 1)
-        std::iota(Tmp.begin(), Tmp.end(), 0);
-
+        std::vector<size_t> ParSeq;
         for (size_t j = 0; j < parCount; ++j) {
-            std::uniform_int_distribution<size_t> distribution(0, parCount - j);
-            const size_t iRandom = distribution(generator);
-            ParSeq[j] = Tmp[iRandom];
-            // shift items of `Tmp` from `iRandom` to the end
-            for (size_t k = iRandom + 1; k < parCount; ++k) {
-                Tmp[k - 1] = Tmp[k];
+            if (!ToFit[j]) {
+                continue;
             }
+            ParSeq.push_back(j);
         }
+        std::ranges::shuffle(ParSeq, generator);
 
         double fmin;
-        for (int j = 0; j < parCount; ++j) {
-            if (ToFit[ParSeq[j]]) {
-                iParNum = ParSeq[j];
-                std::tie(par[iParNum], fmin) = GoldenMinimize(
-                    *this,
-                    0.5 * par[iParNum], 2.0 * par[iParNum],
-                    1.0 * par[iParNum],
-                    1e-3
-                );
-            }
+        for (size_t j: ParSeq) {
+            parameterIndex = j;
+            std::tie(par[parameterIndex], fmin) = GoldenMinimize(
+                *this,
+                0.5 * par[parameterIndex], 2.0 * par[parameterIndex],
+                1.0 * par[parameterIndex],
+                1e-3
+            );
         }
         if (std::fstream params("fitparameters_new.txt", std::fstream::app); params) {
             for (const auto p: par)

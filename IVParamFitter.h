@@ -11,7 +11,7 @@ class IVParamFitter {
 
     std::valarray<double> par;
     std::valarray<bool> ToFit;
-    size_t iParNum;
+    size_t parameterIndex;
 
 public:
     double operator()(double dParam);
